@@ -1,5 +1,7 @@
-flask==2.1.0
-flask-sqlalchemy==2.5.1
-pillow==9.1.0
+Flask==2.3.3
+Flask-SQLAlchemy==3.1.1
+Pillow==10.0.0
+requests==2.31.0
+python-dotenv==1.0.0
 flask-wtf==1.0.1
 email-validator==1.2.1

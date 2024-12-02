@@ -1,8 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from PIL import Image
 import os
+from book_api import BookAPI
+import uuid
+from io import BytesIO
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
@@ -38,29 +41,54 @@ def index():
     books = Book.query.all()
     return render_template('index.html', books=books)
 
+@app.route('/fetch_book_info/<isbn>')
+def fetch_book_info(isbn):
+    book_info = BookAPI.fetch_book_info(isbn)
+    if not book_info:
+        return jsonify({"error": "Libro non trovato"}), 404
+    return jsonify(book_info)
+
 @app.route('/add_book', methods=['GET', 'POST'])
 def add_book():
     if request.method == 'POST':
-        # Gestione caricamento copertina
-        cover = request.files.get('cover')
+        isbn = request.form.get('isbn', '')
         cover_filename = None
-        if cover and cover.filename:
-            filename = secure_filename(cover.filename)
-            cover_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            cover.save(cover_path)
-            
-            # Ridimensiona l'immagine
-            with Image.open(cover_path) as img:
-                img.thumbnail((300, 300))
-                img.save(cover_path)
-            
-            cover_filename = filename
+
+        # Se è stato fornito un ISBN, prova a recuperare le informazioni online
+        if isbn:
+            book_info = BookAPI.fetch_book_info(isbn)
+            if book_info and book_info.get('cover_url'):
+                # Scarica la copertina
+                cover_data = BookAPI.download_cover_image(book_info['cover_url'])
+                if cover_data:
+                    # Genera un nome file univoco per la copertina
+                    cover_filename = f"{uuid.uuid4()}.jpg"
+                    cover_path = os.path.join(app.config['UPLOAD_FOLDER'], cover_filename)
+                    
+                    # Salva e ridimensiona l'immagine
+                    with Image.open(BytesIO(cover_data)) as img:
+                        img.thumbnail((300, 300))
+                        img.save(cover_path, 'JPEG')
+
+        # Se non c'è una copertina da API, usa quella caricata dall'utente
+        if not cover_filename:
+            cover = request.files.get('cover')
+            if cover and cover.filename:
+                filename = secure_filename(cover.filename)
+                cover_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                cover.save(cover_path)
+                
+                with Image.open(cover_path) as img:
+                    img.thumbnail((300, 300))
+                    img.save(cover_path)
+                
+                cover_filename = filename
 
         # Creazione nuovo libro
         new_book = Book(
             title=request.form['title'],
             author=request.form['author'],
-            isbn=request.form.get('isbn', ''),
+            isbn=isbn,
             cover_image=cover_filename,
             year_published=request.form.get('year_published', type=int),
             genre=request.form.get('genre', ''),
