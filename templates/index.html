@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="my-4">La Mia Libreria</h1>
+    </div>
+</div>
+
+<div class="row">
+    {% for book in books %}
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            {% if book.cover_image %}
+            <img src="{{ url_for('static', filename='covers/' + book.cover_image) }}" 
+                 class="card-img-top book-cover" alt="{{ book.title }}">
+            {% else %}
+            <div class="card-img-top bg-light text-center py-5">Nessuna Copertina</div>
+            {% endif %}
+            
+            <div class="card-body">
+                <h5 class="card-title">{{ book.title }}</h5>
+                <p class="card-text">
+                    <strong>Autore:</strong> {{ book.author }}<br>
+                    <strong>Anno:</strong> {{ book.year_published or 'Non specificato' }}<br>
+                    <strong>Stato Lettura:</strong> {{ book.reading_status or 'Non iniziato' }}
+                </p>
+                <a href="{{ url_for('book_detail', book_id=book.id) }}" class="btn btn-primary">Dettagli</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not books %}
+<div class="alert alert-info">
+    Non hai ancora aggiunto libri alla tua libreria. 
+    <a href="{{ url_for('add_book') }}" class="alert-link">Aggiungi il tuo primo libro!</a>
+</div>
+{% endif %}
+{% endblock %}

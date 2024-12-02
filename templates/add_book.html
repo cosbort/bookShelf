@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2 class="my-4">Aggiungi un Nuovo Libro</h2>
+        
+        <form method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="title" class="form-label">Titolo *</label>
+                <input type="text" class="form-control" id="title" name="title" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="author" class="form-label">Autore *</label>
+                <input type="text" class="form-control" id="author" name="author" required>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="isbn" class="form-label">ISBN</label>
+                    <input type="text" class="form-control" id="isbn" name="isbn">
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="year_published" class="form-label">Anno di Pubblicazione</label>
+                    <input type="number" class="form-control" id="year_published" name="year_published">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="genre" class="form-label">Genere</label>
+                <input type="text" class="form-control" id="genre" name="genre">
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="start_date" class="form-label">Data Inizio Lettura</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date">
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="end_date" class="form-label">Data Fine Lettura</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="reading_status" class="form-label">Stato Lettura</label>
+                <select class="form-select" id="reading_status" name="reading_status">
+                    <option value="">Seleziona</option>
+                    <option value="Non iniziato">Non iniziato</option>
+                    <option value="In corso">In corso</option>
+                    <option value="Completato">Completato</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="rating" class="form-label">Valutazione</label>
+                <select class="form-select" id="rating" name="rating">
+                    <option value="">Seleziona</option>
+                    <option value="1">⭐</option>
+                    <option value="2">⭐⭐</option>
+                    <option value="3">⭐⭐⭐</option>
+                    <option value="4">⭐⭐⭐⭐</option>
+                    <option value="5">⭐⭐⭐⭐⭐</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="cover" class="form-label">Copertina</label>
+                <input type="file" class="form-control" id="cover" name="cover" accept="image/*">
+            </div>
+            
+            <div class="mb-3">
+                <label for="personal_notes" class="form-label">Note Personali</label>
+                <textarea class="form-control" id="personal_notes" name="personal_notes" rows="4"></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Aggiungi Libro</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

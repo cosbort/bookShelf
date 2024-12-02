@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        {% if book.cover_image %}
+        <img src="{{ url_for('static', filename='covers/' + book.cover_image) }}" 
+             class="img-fluid rounded mb-3" alt="{{ book.title }}">
+        {% else %}
+        <div class="bg-light text-center py-5 mb-3">Nessuna Copertina</div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-8">
+        <h1>{{ book.title }}</h1>
+        <p class="lead">{{ book.author }}</p>
+        
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Dettagli Libro</h5>
+                <ul class="list-unstyled">
+                    <li><strong>ISBN:</strong> {{ book.isbn or 'Non specificato' }}</li>
+                    <li><strong>Anno Pubblicazione:</strong> {{ book.year_published or 'Non specificato' }}</li>
+                    <li><strong>Genere:</strong> {{ book.genre or 'Non specificato' }}</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Stato Lettura</h5>
+                <ul class="list-unstyled">
+                    <li><strong>Stato:</strong> {{ book.reading_status or 'Non iniziato' }}</li>
+                    <li><strong>Data Inizio:</strong> {{ book.start_date or 'Non impostata' }}</li>
+                    <li><strong>Data Fine:</strong> {{ book.end_date or 'Non completato' }}</li>
+                    <li><strong>Valutazione:</strong> 
+                        {% if book.rating %}
+                            {% for _ in range(book.rating) %}⭐{% endfor %}
+                        {% else %}
+                            Non valutato
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        {% if book.personal_notes %}
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Note Personali</h5>
+                <p>{{ book.personal_notes }}</p>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="mt-3">
+            <a href="{{ url_for('edit_book', book_id=book.id) }}" class="btn btn-warning me-2">Modifica</a>
+            <form action="{{ url_for('delete_book', book_id=book.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Sei sicuro di voler eliminare questo libro?');">
+                <button type="submit" class="btn btn-danger">Elimina</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <h2 class="my-4">Modifica Libro</h2>
+        
+        <form method="POST">
+            <div class="mb-3">
+                <label for="title" class="form-label">Titolo *</label>
+                <input type="text" class="form-control" id="title" name="title" value="{{ book.title }}" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="author" class="form-label">Autore *</label>
+                <input type="text" class="form-control" id="author" name="author" value="{{ book.author }}" required>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="isbn" class="form-label">ISBN</label>
+                    <input type="text" class="form-control" id="isbn" name="isbn" value="{{ book.isbn }}">
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="year_published" class="form-label">Anno di Pubblicazione</label>
+                    <input type="number" class="form-control" id="year_published" name="year_published" value="{{ book.year_published }}">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="genre" class="form-label">Genere</label>
+                <input type="text" class="form-control" id="genre" name="genre" value="{{ book.genre }}">
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="start_date" class="form-label">Data Inizio Lettura</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="{{ book.start_date }}">
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <label for="end_date" class="form-label">Data Fine Lettura</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="{{ book.end_date }}">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label for="reading_status" class="form-label">Stato Lettura</label>
+                <select class="form-select" id="reading_status" name="reading_status">
+                    <option value="">Seleziona</option>
+                    <option value="Non iniziato" {% if book.reading_status == 'Non iniziato' %}selected{% endif %}>Non iniziato</option>
+                    <option value="In corso" {% if book.reading_status == 'In corso' %}selected{% endif %}>In corso</option>
+                    <option value="Completato" {% if book.reading_status == 'Completato' %}selected{% endif %}>Completato</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="rating" class="form-label">Valutazione</label>
+                <select class="form-select" id="rating" name="rating">
+                    <option value="">Seleziona</option>
+                    <option value="1" {% if book.rating == 1 %}selected{% endif %}>⭐</option>
+                    <option value="2" {% if book.rating == 2 %}selected{% endif %}>⭐⭐</option>
+                    <option value="3" {% if book.rating == 3 %}selected{% endif %}>⭐⭐⭐</option>
+                    <option value="4" {% if book.rating == 4 %}selected{% endif %}>⭐⭐⭐⭐</option>
+                    <option value="5" {% if book.rating == 5 %}selected{% endif %}>⭐⭐⭐⭐⭐</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label for="personal_notes" class="form-label">Note Personali</label>
+                <textarea class="form-control" id="personal_notes" name="personal_notes" rows="4">{{ book.personal_notes }}</textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Aggiorna Libro</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
