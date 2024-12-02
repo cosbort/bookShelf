@@ -10,24 +10,28 @@
 <div class="row">
     {% for book in books %}
     <div class="col-md-4 mb-4">
-        <div class="card">
-            {% if book.cover_image %}
-            <img src="{{ url_for('static', filename='covers/' + book.cover_image) }}" 
-                 class="card-img-top book-cover" alt="{{ book.title }}">
-            {% else %}
-            <div class="card-img-top bg-light text-center py-5">Nessuna Copertina</div>
-            {% endif %}
-            
-            <div class="card-body">
-                <h5 class="card-title">{{ book.title }}</h5>
-                <p class="card-text">
-                    <strong>Autore:</strong> {{ book.author }}<br>
-                    <strong>Anno:</strong> {{ book.year_published or 'Non specificato' }}<br>
-                    <strong>Stato Lettura:</strong> {{ book.reading_status or 'Non iniziato' }}
-                </p>
-                <a href="{{ url_for('book_detail', book_id=book.id) }}" class="btn btn-primary">Dettagli</a>
+        <a href="{{ url_for('book_detail', book_id=book.id) }}" class="text-decoration-none">
+            <div class="card h-100 book-card">
+                {% if book.cover_image %}
+                <img src="{{ url_for('static', filename='covers/' + book.cover_image) }}" 
+                     class="card-img-top book-cover" alt="{{ book.title }}"
+                     style="height: 400px; object-fit: cover;">
+                {% else %}
+                <div class="card-img-top bg-light text-center d-flex align-items-center justify-content-center" style="height: 400px;">
+                    <i class="fas fa-book fa-4x text-secondary"></i>
+                </div>
+                {% endif %}
+                
+                <div class="card-body">
+                    <h5 class="card-title text-dark">{{ book.title }}</h5>
+                    <p class="card-text text-muted">
+                        <strong>Autore:</strong> {{ book.author }}<br>
+                        <strong>Anno:</strong> {{ book.year_published or 'Non specificato' }}<br>
+                        <strong>Stato Lettura:</strong> {{ book.reading_status or 'Non iniziato' }}
+                    </p>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     {% endfor %}
 </div>
