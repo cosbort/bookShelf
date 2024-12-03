@@ -6,6 +6,7 @@ import os
 from book_api import BookAPI
 import uuid
 from io import BytesIO
+import logging
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
@@ -43,9 +44,14 @@ def index():
 
 @app.route('/fetch_book_info/<isbn>')
 def fetch_book_info(isbn):
+    app.logger.debug(f"Ricevuta richiesta per ISBN: {isbn}")
     book_info = BookAPI.fetch_book_info(isbn)
     if not book_info:
+        app.logger.warning(f"Nessuna informazione trovata per ISBN: {isbn}")
+        flash(f'Nessuna informazione trovata per il codice ISBN: {isbn}. Verifica che il codice sia corretto.', 'warning')
         return jsonify({"error": "Libro non trovato"}), 404
+    app.logger.debug(f"Informazioni libro trovate: {book_info}")
+    flash('Informazioni libro recuperate con successo!', 'success')
     return jsonify(book_info)
 
 @app.route('/add_book', methods=['GET', 'POST'])

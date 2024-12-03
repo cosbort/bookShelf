@@ -82,12 +82,18 @@ document.getElementById('fetchInfo').addEventListener('click', async function() 
     }
 
     try {
+        console.log('Ricerca informazioni per ISBN:', isbn);
         const response = await fetch(`/fetch_book_info/${isbn}`);
+        console.log('Risposta ricevuta:', response);
+        
         if (!response.ok) {
-            throw new Error('Libro non trovato');
+            // Ricarica la pagina per mostrare il messaggio flash di errore
+            window.location.reload();
+            return;
         }
         
         const bookInfo = await response.json();
+        console.log('Informazioni libro ricevute:', bookInfo);
         
         // Popola i campi del form con i dati ricevuti
         document.getElementById('title').value = bookInfo.title || '';
@@ -96,17 +102,26 @@ document.getElementById('fetchInfo').addEventListener('click', async function() 
         document.getElementById('genre').value = bookInfo.genre || '';
         
         // Se c'è una copertina, mostra l'anteprima
+        const previewDiv = document.getElementById('coverPreview');
         if (bookInfo.cover_url) {
-            const previewDiv = document.getElementById('coverPreview');
+            console.log('URL copertina trovato:', bookInfo.cover_url);
             previewDiv.innerHTML = `
                 <img src="${bookInfo.cover_url}" alt="Copertina libro" 
                      style="max-width: 200px; max-height: 300px;" class="img-thumbnail">
                 <p class="text-muted small mt-1">La copertina verrà scaricata automaticamente quando salvi il libro</p>
             `;
+        } else {
+            console.log('Nessuna copertina disponibile');
+            previewDiv.innerHTML = '';
         }
         
+        // Ricarica la pagina per mostrare il messaggio di successo
+        window.location.reload();
+        
     } catch (error) {
-        alert('Errore nel recupero delle informazioni del libro: ' + error.message);
+        console.error('Errore:', error);
+        // Ricarica la pagina per mostrare il messaggio di errore
+        window.location.reload();
     }
 });
 </script>
