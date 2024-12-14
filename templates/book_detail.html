@@ -1,64 +1,170 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-4">
-        {% if book.cover_image %}
-        <img src="{{ url_for('static', filename='covers/' + book.cover_image) }}" 
-             class="img-fluid rounded mb-3" alt="{{ book.title }}">
-        {% else %}
-        <div class="bg-light text-center py-5 mb-3">Nessuna Copertina</div>
-        {% endif %}
-    </div>
-    
-    <div class="col-md-8">
-        <h1>{{ book.title }}</h1>
-        <p class="lead">{{ book.author }}</p>
-        
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Dettagli Libro</h5>
-                <ul class="list-unstyled">
-                    <li><strong>ISBN:</strong> {{ book.isbn or 'Non specificato' }}</li>
-                    <li><strong>Anno Pubblicazione:</strong> {{ book.year_published or 'Non specificato' }}</li>
-                    <li><strong>Genere:</strong> {{ book.genre or 'Non specificato' }}</li>
-                </ul>
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ book.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="position-sticky" style="top: 80px;">
+                {% if book.cover_image %}
+                <img src="{{ url_for('static', filename='covers/' + book.cover_image) }}" 
+                     class="img-fluid rounded shadow-sm mb-4" alt="{{ book.title }}">
+                {% else %}
+                <div class="bg-light rounded text-center py-5 mb-4">
+                    <i class="fas fa-book fa-5x text-secondary"></i>
+                </div>
+                {% endif %}
+
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('edit_book', book_id=book.id) }}" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>Modifica
+                    </a>
+                    <form action="{{ url_for('delete_book', book_id=book.id) }}" method="POST" 
+                          onsubmit="return confirm('Sei sicuro di voler eliminare questo libro?');">
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fas fa-trash me-2"></i>Elimina
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
-        
-        <div class="card mb-3">
-            <div class="card-body">
-                <h5 class="card-title">Stato Lettura</h5>
-                <ul class="list-unstyled">
-                    <li><strong>Stato:</strong> {{ book.reading_status or 'Non iniziato' }}</li>
-                    <li><strong>Data Inizio:</strong> {{ book.start_date or 'Non impostata' }}</li>
-                    <li><strong>Data Fine:</strong> {{ book.end_date or 'Non completato' }}</li>
-                    <li><strong>Valutazione:</strong> 
-                        {% if book.rating %}
-                            {% for _ in range(book.rating) %}⭐{% endfor %}
-                        {% else %}
-                            Non valutato
+
+        <div class="col-md-8">
+            <div class="mb-4">
+                <h1 class="display-5 mb-2">{{ book.title }}</h1>
+                <h2 class="h4 text-muted mb-3">{{ book.author }}</h2>
+                
+                {% if book.rating %}
+                <div class="mb-3">
+                    {% for _ in range(book.rating) %}
+                    <i class="fas fa-star text-warning"></i>
+                    {% endfor %}
+                    {% for _ in range(5 - book.rating) %}
+                    <i class="far fa-star text-warning"></i>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="row mb-4">
+                <div class="col-sm-6 col-lg-3 mb-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                <i class="fas fa-calendar me-2"></i>Anno
+                            </h6>
+                            <p class="card-text">{{ book.year_published or 'Non specificato' }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3 mb-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                <i class="fas fa-tag me-2"></i>Genere
+                            </h6>
+                            <p class="card-text">{{ book.genre or 'Non specificato' }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3 mb-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                <i class="fas fa-barcode me-2"></i>ISBN
+                            </h6>
+                            <p class="card-text">{{ book.isbn or 'Non specificato' }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-lg-3 mb-3">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                <i class="fas fa-book-reader me-2"></i>Stato
+                            </h6>
+                            <p class="card-text">
+                                <span class="badge 
+                                    {% if book.reading_status == 'Completato' %}bg-success
+                                    {% elif book.reading_status == 'In corso' %}bg-warning
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ book.reading_status or 'Non iniziato' }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if book.start_date or book.end_date %}
+            <div class="card mb-4 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-clock me-2"></i>Date di Lettura
+                    </h5>
+                    <div class="row">
+                        {% if book.start_date %}
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Data Inizio:</strong><br>
+                                {{ book.start_date.strftime('%d/%m/%Y') }}
+                            </p>
+                        </div>
                         {% endif %}
-                    </li>
-                </ul>
+                        {% if book.end_date %}
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Data Fine:</strong><br>
+                                {{ book.end_date.strftime('%d/%m/%Y') }}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-        </div>
-        
-        {% if book.personal_notes %}
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Note Personali</h5>
-                <p>{{ book.personal_notes }}</p>
+            {% endif %}
+
+            {% if book.personal_notes %}
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-pencil-alt me-2"></i>Note Personali
+                    </h5>
+                    <p class="card-text">{{ book.personal_notes }}</p>
+                </div>
             </div>
-        </div>
-        {% endif %}
-        
-        <div class="mt-3">
-            <a href="{{ url_for('edit_book', book_id=book.id) }}" class="btn btn-warning me-2">Modifica</a>
-            <form action="{{ url_for('delete_book', book_id=book.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Sei sicuro di voler eliminare questo libro?');">
-                <button type="submit" class="btn btn-danger">Elimina</button>
-            </form>
+            {% endif %}
         </div>
     </div>
 </div>
+
+<style>
+    .breadcrumb-item + .breadcrumb-item::before {
+        content: "›";
+        font-size: 1.2em;
+        line-height: 1;
+        color: var(--bs-secondary);
+    }
+
+    .card {
+        border-radius: 12px;
+        transition: transform 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+    }
+
+    .badge {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+        border-radius: 20px;
+    }
+</style>
 {% endblock %}

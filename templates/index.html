@@ -1,34 +1,72 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
+<div class="row mb-4">
     <div class="col-12">
-        <h1 class="my-4">La Mia Libreria</h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="display-4">
+                <i class="fas fa-books me-2"></i>La Mia Libreria
+            </h1>
+            <a href="{{ url_for('add_book') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Aggiungi Libro
+            </a>
+        </div>
     </div>
 </div>
 
-<div class="row">
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
     {% for book in books %}
-    <div class="col-md-4 mb-4">
+    <div class="col">
         <a href="{{ url_for('book_detail', book_id=book.id) }}" class="text-decoration-none">
             <div class="card h-100 book-card">
                 {% if book.cover_image %}
-                <img src="{{ url_for('static', filename='covers/' + book.cover_image) }}" 
-                     class="card-img-top book-cover" alt="{{ book.title }}"
-                     style="height: 400px; object-fit: cover;">
+                <div class="book-cover-container">
+                    <img src="{{ url_for('static', filename='covers/' + book.cover_image) }}" 
+                         class="card-img-top book-cover" alt="{{ book.title }}"
+                         loading="lazy">
+                    {% if book.reading_status %}
+                    <div class="status-badge 
+                        {% if book.reading_status == 'Completato' %}bg-success
+                        {% elif book.reading_status == 'In corso' %}bg-warning
+                        {% else %}bg-secondary{% endif %}">
+                        {{ book.reading_status }}
+                    </div>
+                    {% endif %}
+                </div>
                 {% else %}
-                <div class="card-img-top bg-light text-center d-flex align-items-center justify-content-center" style="height: 400px;">
+                <div class="card-img-top bg-light d-flex align-items-center justify-content-center book-cover">
                     <i class="fas fa-book fa-4x text-secondary"></i>
                 </div>
                 {% endif %}
                 
                 <div class="card-body">
-                    <h5 class="card-title text-dark">{{ book.title }}</h5>
-                    <p class="card-text text-muted">
-                        <strong>Autore:</strong> {{ book.author }}<br>
-                        <strong>Anno:</strong> {{ book.year_published or 'Non specificato' }}<br>
-                        <strong>Stato Lettura:</strong> {{ book.reading_status or 'Non iniziato' }}
+                    <h5 class="card-title text-primary mb-2">{{ book.title }}</h5>
+                    <p class="card-text">
+                        <small class="text-muted">
+                            <i class="fas fa-user me-1"></i>{{ book.author }}
+                        </small>
                     </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% if book.year_published %}
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-calendar me-1"></i>{{ book.year_published }}
+                            </span>
+                            {% endif %}
+                            {% if book.genre %}
+                            <span class="badge bg-info">
+                                <i class="fas fa-tag me-1"></i>{{ book.genre }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if book.rating %}
+                        <div class="text-warning">
+                            {% for _ in range(book.rating) %}
+                            <i class="fas fa-star"></i>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </a>
@@ -37,9 +75,48 @@
 </div>
 
 {% if not books %}
-<div class="alert alert-info">
-    Non hai ancora aggiunto libri alla tua libreria. 
-    <a href="{{ url_for('add_book') }}" class="alert-link">Aggiungi il tuo primo libro!</a>
+<div class="text-center py-5">
+    <div class="display-1 text-muted mb-4">
+        <i class="fas fa-books"></i>
+    </div>
+    <h2 class="h4 text-muted mb-4">La tua libreria è vuota</h2>
+    <p class="text-muted mb-4">Inizia ad aggiungere i tuoi libri preferiti alla collezione!</p>
+    <a href="{{ url_for('add_book') }}" class="btn btn-primary btn-lg">
+        <i class="fas fa-plus me-2"></i>Aggiungi il tuo primo libro
+    </a>
 </div>
 {% endif %}
+
+<style>
+    .book-cover-container {
+        position: relative;
+    }
+    
+    .status-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .badge {
+        padding: 6px 10px;
+        margin-right: 5px;
+        font-weight: 500;
+    }
+
+    .card-title {
+        font-weight: 600;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
 {% endblock %}
