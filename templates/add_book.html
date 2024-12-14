@@ -8,14 +8,18 @@
             <label for="isbn" class="form-label">ISBN</label>
             <div class="input-group">
                 <input type="text" class="form-control" id="isbn" name="isbn">
-                <button type="button" class="btn btn-primary" id="fetchInfo">Cerca Info</button>
+                <button type="button" class="btn btn-primary" id="fetchInfo">Cerca per ISBN</button>
             </div>
             <div class="form-text">Inserisci l'ISBN per recuperare automaticamente le informazioni del libro</div>
         </div>
 
         <div class="mb-3">
             <label for="title" class="form-label">Titolo</label>
-            <input type="text" class="form-control" id="title" name="title" required>
+            <div class="input-group">
+                <input type="text" class="form-control" id="title" name="title" required>
+                <button type="button" class="btn btn-success" id="fetchInfoByTitle">Cerca per Titolo</button>
+            </div>
+            <div class="form-text">Puoi anche cercare il libro per titolo</div>
         </div>
 
         <div class="mb-3">
@@ -121,6 +125,52 @@ document.getElementById('fetchInfo').addEventListener('click', async function() 
     } catch (error) {
         console.error('Errore:', error);
         // Ricarica la pagina per mostrare il messaggio di errore
+        window.location.reload();
+    }
+});
+
+document.getElementById('fetchInfoByTitle').addEventListener('click', async function() {
+    const title = document.getElementById('title').value.trim();
+    if (!title) {
+        alert('Inserisci un titolo valido');
+        return;
+    }
+
+    try {
+        console.log('Ricerca informazioni per titolo:', title);
+        const response = await fetch(`/fetch_book_info_by_title/${encodeURIComponent(title)}`);
+        console.log('Risposta ricevuta:', response);
+        
+        if (!response.ok) {
+            window.location.reload();
+            return;
+        }
+        
+        const bookInfo = await response.json();
+        console.log('Informazioni libro ricevute:', bookInfo);
+        
+        // Popola i campi del form con i dati ricevuti
+        document.getElementById('title').value = bookInfo.title || '';
+        document.getElementById('author').value = bookInfo.author || '';
+        document.getElementById('year_published').value = bookInfo.year_published || '';
+        document.getElementById('genre').value = bookInfo.genre || '';
+        document.getElementById('isbn').value = bookInfo.isbn || '';
+        
+        // Se c'è una copertina, mostra l'anteprima
+        const previewDiv = document.getElementById('coverPreview');
+        if (bookInfo.cover_url) {
+            console.log('URL copertina trovato:', bookInfo.cover_url);
+            previewDiv.innerHTML = `
+                <img src="${bookInfo.cover_url}" alt="Copertina libro" 
+                     style="max-width: 200px; max-height: 300px;" class="img-thumbnail">
+                <p class="text-muted small mt-1">La copertina verrà scaricata automaticamente quando salvi il libro</p>
+            `;
+        } else {
+            console.log('Nessuna copertina disponibile');
+            previewDiv.innerHTML = '';
+        }
+    } catch (error) {
+        console.error('Errore:', error);
         window.location.reload();
     }
 });

@@ -54,6 +54,18 @@ def fetch_book_info(isbn):
     flash('Informazioni libro recuperate con successo!', 'success')
     return jsonify(book_info)
 
+@app.route('/fetch_book_info_by_title/<title>')
+def fetch_book_info_by_title(title):
+    app.logger.debug(f"Ricevuta richiesta per titolo: {title}")
+    book_info = BookAPI.fetch_book_info_by_title(title)
+    if not book_info:
+        app.logger.warning(f"Nessuna informazione trovata per il titolo: {title}")
+        flash(f'Nessuna informazione trovata per il titolo: {title}', 'warning')
+        return jsonify({"error": "Libro non trovato"}), 404
+    app.logger.debug(f"Informazioni libro trovate: {book_info}")
+    flash('Informazioni libro recuperate con successo!', 'success')
+    return jsonify(book_info)
+
 @app.route('/add_book', methods=['GET', 'POST'])
 def add_book():
     if request.method == 'POST':
