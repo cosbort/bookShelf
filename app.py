@@ -7,11 +7,12 @@ from book_api import BookAPI
 import uuid
 from io import BytesIO
 import logging
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///library.db'
-app.config['UPLOAD_FOLDER'] = 'static/covers'
+app.config['UPLOAD_FOLDER'] = 'static/images/covers'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 db = SQLAlchemy(app)
@@ -36,6 +37,10 @@ class Book(db.Model):
 
     def __repr__(self):
         return f'<Book {self.title}>'
+
+@app.context_processor
+def utility_processor():
+    return {'now': datetime.now()}
 
 @app.route('/')
 def index():

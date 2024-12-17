@@ -4,8 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Catalogo Libri{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2c3e50',
+                        secondary: '#34495e',
+                        accent: '#3498db',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -20,19 +33,6 @@
             padding-top: 60px;
             background-color: var(--background-light);
             color: var(--text-color);
-        }
-
-        .navbar {
-            background-color: var(--primary-color) !important;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar-brand, .nav-link {
-            color: white !important;
-        }
-
-        .navbar-brand:hover, .nav-link:hover {
-            color: var(--accent-color) !important;
         }
 
         .card {
@@ -98,14 +98,6 @@
             animation: fadeIn 0.5s ease-out;
         }
 
-        /* Stile per il footer */
-        .footer {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 20px 0;
-            margin-top: 50px;
-        }
-
         /* Miglioramenti per dispositivi mobili */
         @media (max-width: 768px) {
             .book-cover {
@@ -118,29 +110,18 @@
         }
     </style>
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg fixed-top">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="fas fa-book-reader me-2"></i>Libreria Personale
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">
-                            <i class="fas fa-home me-1"></i>Home
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('add_book') }}">
-                            <i class="fas fa-plus me-1"></i>Aggiungi Libro
-                        </a>
-                    </li>
-                </ul>
+<body class="bg-gray-50 text-gray-800 pt-16">
+    <nav class="fixed top-0 left-0 right-0 bg-primary shadow-md z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <a href="{{ url_for('index') }}" class="flex items-center text-white hover:text-accent transition-colors">
+                    <i class="fas fa-book-reader mr-2"></i>
+                    <span class="font-semibold text-xl">Libreria Personale</span>
+                </a>
+                <div class="flex space-x-4">
+                    <a href="{{ url_for('index') }}" class="text-white hover:text-accent transition-colors">Home</a>
+                    <a href="{{ url_for('add_book') }}" class="text-white hover:text-accent transition-colors">Aggiungi Libro</a>
+                </div>
             </div>
         </div>
     </nav>
@@ -157,24 +138,15 @@
             {% endif %}
         {% endwith %}
 
-        {% block content %}{% endblock %}
+        <main class="container mx-auto px-4 py-8">
+            {% block content %}{% endblock %}
+        </main>
     </div>
 
-    <footer class="footer">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Libreria Personale</h5>
-                    <p class="mb-0">La tua biblioteca digitale personale</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="mb-0">&copy; 2024 Libreria Personale. Tutti i diritti riservati.</p>
-                </div>
-            </div>
+    <footer class="bg-primary text-white py-6 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p>&copy; {{ now.year }} Libreria Personale. Tutti i diritti riservati.</p>
         </div>
     </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    {% block scripts %}{% endblock %}
 </body>
 </html>
