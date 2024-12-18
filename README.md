@@ -1,49 +1,54 @@
 # Libreria Personale 📚
 
 ## Descrizione
-Un'applicazione web per catalogare e gestire la tua collezione di libri personale. Permette di aggiungere, modificare, eliminare e visualizzare i dettagli dei libri.
+Un'applicazione web moderna per catalogare e gestire la tua collezione di libri personale. Costruita con React, TypeScript e Tailwind CSS, offre un'interfaccia utente elegante e reattiva completamente in italiano.
 
 ## Funzionalità
-- Aggiunta di nuovi libri con dettagli completi
-- Caricamento di copertine dei libri
-- Tracciamento dello stato di lettura
-- Valutazione e note personali
-- Interfaccia responsive e user-friendly
+- Gestione completa dei libri (aggiunta, modifica, eliminazione)
+- Interfaccia utente moderna con Tailwind CSS e Shadcn UI
+- Supporto per caricamento copertine
+- Sistema di valutazione e stato di lettura
+- Completamente in italiano
 
-## Requisiti
-- Python 3.8+
-- Flask
-- SQLAlchemy
-- Pillow
+## Tech Stack
+- React 18
+- TypeScript
+- Next.js 14
+- Tailwind CSS
+- Shadcn UI
+- Radix UI
+
+## Struttura del Progetto
+```
+src/
+├── components/     # Componenti React riutilizzabili
+├── hooks/         # Custom React hooks
+├── utils/         # Funzioni di utilità
+├── types/         # TypeScript types e interfaces
+└── lib/          # Librerie condivise
+```
 
 ## Installazione
-1. Clonare il repository
-2. Creare un ambiente virtuale
+1. Clona il repository
 ```bash
-python -m venv venv
-source venv/bin/activate  # Su Windows: venv\Scripts\activate
+git clone [repository-url]
 ```
 
-3. Installare le dipendenze
+2. Installa le dipendenze
 ```bash
-pip install -r requirements.txt
+npm install
 ```
 
-4. Avviare l'applicazione
+3. Avvia il server di sviluppo
 ```bash
-python app.py
+npm run dev
 ```
 
-## Utilizzo
-- Naviga nella homepage per vedere la tua libreria
-- Clicca su "Aggiungi Libro" per inserire nuovi libri
-- Clicca sui dettagli di un libro per vederne le informazioni complete
-
-## Tecnologie Utilizzate
-- Backend: Flask
-- Database: SQLAlchemy (SQLite)
-- Frontend: Bootstrap 5
-- Gestione Immagini: Pillow
+## Sviluppo
+- Utilizzo di TypeScript per type safety
+- Componenti funzionali React con hooks
+- Gestione dello stato con React hooks
+- Styling con Tailwind CSS e Shadcn UI
 
 ## Licenza
 MIT License

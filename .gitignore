@@ -16,3 +16,4 @@ venv/
 # Uploaded files
 static/covers/*
 !static/covers/.gitkeep
+node_modules
