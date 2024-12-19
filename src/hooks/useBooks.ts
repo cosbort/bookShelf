@@ -3,39 +3,100 @@ import type { Book } from '@/types/book';
 
 export function useBooks() {
   const [books, setBooks] = useState<Book[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchBooks = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/books');
+      if (!response.ok) throw new Error('Failed to fetch books');
+      const data = await response.json();
+      setBooks(data);
+    } catch (err) {
+      setError('Error fetching books');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addBook = async (bookData: Omit<Book, 'id'>) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookData),
+      });
+      if (!response.ok) throw new Error('Failed to add book');
+      const newBook = await response.json();
+      setBooks(prev => [newBook, ...prev]);
+      return newBook;
+    } catch (err) {
+      setError('Error adding book');
+      console.error(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateBook = async (id: string, bookData: Partial<Book>) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/books/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookData),
+      });
+      if (!response.ok) throw new Error('Failed to update book');
+      const updatedBook = await response.json();
+      setBooks(prev => prev.map(book => 
+        book.id === id ? updatedBook : book
+      ));
+      return updatedBook;
+    } catch (err) {
+      setError('Error updating book');
+      console.error(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteBook = async (id: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/books/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete book');
+      setBooks(prev => prev.filter(book => book.id !== id));
+    } catch (err) {
+      setError('Error deleting book');
+      console.error(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchBooks();
   }, []);
 
-  async function fetchBooks(): Promise<void> {
-    try {
-      const response = await fetch('/api/books');
-      if (!response.ok) throw new Error('Errore nel caricamento dei libri');
-      const data = await response.json();
-      setBooks(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore sconosciuto');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function addBook(book: Omit<Book, 'id'>): Promise<void> {
-    try {
-      const response = await fetch('/api/books', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(book),
-      });
-      if (!response.ok) throw new Error('Errore nell\'aggiunta del libro');
-      await fetchBooks();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore sconosciuto');
-    }
-  }
-
-  return { books, isLoading, error, addBook };
+  return {
+    books,
+    isLoading,
+    error,
+    fetchBooks,
+    addBook,
+    updateBook,
+    deleteBook,
+  };
 }

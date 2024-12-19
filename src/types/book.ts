@@ -1,17 +1,31 @@
+export type ReadingStatus = 'To Read' | 'Reading' | 'Read';
+
 export interface Book {
   id: string;
+  isbn?: string;
   title: string;
   author: string;
-  rating: number;
-  readingStatus: ReadingStatus;
-  coverImage?: string;
-  notes?: string;
+  genre?: string; 
+  status: ReadingStatus;
+  coverUrl?: string;
+  description?: string;
+  publishedDate?: string;
+  publisher?: string;
+  pageCount?: number;
 }
 
-export const ReadingStatus = {
-  NOT_STARTED: 'non_iniziato',
-  IN_PROGRESS: 'in_corso',
-  COMPLETED: 'completato',
-} as const;
-
-export type ReadingStatus = typeof ReadingStatus[keyof typeof ReadingStatus];
+export interface SearchBookResult {
+  title: string;
+  author: string;
+  description?: string;
+  publishedDate?: string;
+  publisher?: string;
+  pageCount?: number;
+  isbn?: string;
+  coverUrl?: string;
+  genre?: string;
+  imageLinks?: {
+    thumbnail: string;
+    smallThumbnail?: string;
+  };
+}
