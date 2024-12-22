@@ -3,18 +3,41 @@
 import * as React from "react";
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useBookSearch } from '@/hooks/useBookSearch';
-import { useDebounce } from '@/hooks/useDebounce';
 import { useOpenLibrarySearch } from '@/hooks/useOpenLibrarySearch';
-import { Book, ReadingStatus, SearchBookResult } from '@/types/book';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Book } from '@/types/book';
+import { ReadingStatus } from '@/types/book';
+import { SearchBookResult } from '@/types/search';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Search, Book as BookIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { formatDate } from '@/utils/dateFormat';
+import Link from 'next/link';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 interface BookFormProps {
   onSubmit: (book: Omit<Book, 'id'>) => void;
   initialBook?: Book;
 }
+
+const CoverPreview = ({ url }: { url: string }) => (
+  <div className="relative aspect-[2/3] w-48 overflow-hidden rounded-lg">
+    <Image
+      src={url}
+      alt="Copertina libro"
+      fill
+      className="object-cover"
+      onError={(e) => {
+        const target = e.target as HTMLImageElement;
+        target.src = "https://via.placeholder.com/300x450?text=No+Cover";
+      }}
+    />
+  </div>
+);
 
 export function BookForm({ onSubmit, initialBook }: BookFormProps) {
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -66,6 +89,16 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
 
     const search = async () => {
       try {
+        setError(null);
+        setIsLoading(true);
+        setSearchResults([]);
+
+        if (!debouncedSearchTerm.trim()) {
+          setIsDropdownOpen(false);
+          return;
+        }
+
+        console.log('Iniziando la ricerca per:', debouncedSearchTerm);
         const searchByTitle = apiInUse === 'google' ? googleSearchByTitle : openLibrarySearchByTitle;
         const searchByIsbn = apiInUse === 'google' ? googleSearchByIsbn : openLibrarySearchByIsbn;
 
@@ -85,28 +118,14 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
             setSearchResults(books);
           }
         }
-      } catch (error) {
-        if (!isCurrentSearch) return;
-
-        if (error instanceof Error) {
-          const errorMessage = error.message.toLowerCase();
-          if (error.message === 'Request cancelled') {
-            setError(null);
-            return;
-          }
-          
-          // Se Google Books ha raggiunto il limite, passa a OpenLibrary una sola volta
-          if (apiInUse === 'google' && 
-              (errorMessage.includes('quota') || 
-               errorMessage.includes('rate_limit') || 
-               error.message.includes('429'))) {
-            setError('Passaggio a OpenLibrary come alternativa...');
-            setApiInUse('openlibrary');
-            return; // Non resettare i risultati qui
-          }
-          
-          setError(error.message);
-        }
+      } catch (err) {
+        console.error('Errore durante la ricerca:', err);
+        setError(err instanceof Error ? err.message : 'Si è verificato un errore durante la ricerca.');
+        toast.error('Errore durante la ricerca', {
+          description: err instanceof Error ? err.message : 'Si è verificato un errore durante la ricerca.'
+        });
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -150,261 +169,233 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
     onSubmit(formData);
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
-        <div className="relative">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={searchDisabled ? "Ricerca temporaneamente non disponibile" : "Cerca un libro per titolo o ISBN..."}
-              value={searchTerm}
-              onChange={handleSearchInputChange}
-              disabled={searchDisabled}
-              className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10 ${searchDisabled ? 'bg-gray-100' : ''}`}
-            />
-            {isLoading && (
-              <div className="absolute right-3 top-3">
-                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-              </div>
-            )}
-          </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <Input
+          ref={searchInputRef}
+          type="text"
+          placeholder="Cerca un libro per titolo o ISBN..."
+          value={searchTerm}
+          onChange={handleSearchInputChange}
+          className="pl-10"
+        />
+      </div>
 
-          {(isDropdownOpen && searchTerm.trim()) && (
-            <div 
-              className="absolute z-50 w-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-auto"
-              onMouseDown={(e) => {
-                // Previene la chiusura del dropdown quando si clicca su di esso
-                e.preventDefault();
-              }}
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center p-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      {isDropdownOpen && searchResults.length > 0 && (
+        <div className="rounded-lg border bg-white/5 p-4 shadow-lg">
+          <div className="space-y-4">
+            {searchResults.map((book) => (
+              <button
+                key={book.isbn || book.title}
+                type="button"
+                className="flex w-full items-start gap-4 rounded-lg p-2 text-left transition-colors hover:bg-white/10"
+                onClick={() => handleSearchResultClick(book)}
+              >
+                {book.coverUrl && (
+                  <div className="relative h-24 w-16 flex-shrink-0 overflow-hidden rounded">
+                    <Image
+                      src={book.coverUrl}
+                      alt={book.title}
+                      fill
+                      className="object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "https://via.placeholder.com/300x450?text=No+Cover";
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <h3 className="font-medium text-white">{book.title}</h3>
+                  <p className="text-sm text-gray-400">{book.author}</p>
+                  {book.publisher && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {book.publisher}
+                      {book.publishedDate &&
+                        ` - ${new Date(book.publishedDate).getFullYear()}`}
+                    </p>
+                  )}
                 </div>
-              ) : errorState ? (
-                <div className="p-4 text-sm text-red-500">{errorState}</div>
-              ) : searchResults.length > 0 ? (
-                searchResults.map((book, index) => (
-                  <button
-                    key={book.isbn || index}
-                    type="button"
-                    onClick={() => handleSearchResultClick(book)}
-                    className="w-full p-4 hover:bg-gray-50 flex gap-4 items-start border-b last:border-b-0 text-left"
-                  >
-                    {book.coverUrl ? (
-                      <Image
-                        src={book.coverUrl}
-                        alt={`Copertina di ${book.title}`}
-                        width={64}
-                        height={96}
-                        className="rounded shadow-sm"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://via.placeholder.com/160x240?text=No+Cover';
-                          target.classList.add('opacity-50');
-                        }}
-                      />
-                    ) : (
-                      <div className="w-16 h-24 bg-gray-100 rounded flex items-center justify-center shadow-sm">
-                        <BookIcon className="w-8 h-8 text-gray-400" />
-                      </div>
-                    )}
-                    <div className="flex-1 text-left">
-                      <div className="font-medium">{book.title}</div>
-                      <div className="text-sm text-gray-600">{book.author}</div>
-                      {book.publishedDate && (
-                        <div className="text-xs text-gray-500">
-                          {book.publishedDate}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))
-              ) : searchTerm.trim() ? (
-                <div className="p-4 text-sm text-gray-500">
-                  Nessun risultato trovato
-                </div>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-              Titolo
-            </label>
-            <input
-              id="title"
-              name="title"
-              type="text"
-              value={formData.title}
-              onChange={e => setFormData({ ...formData, title: e.target.value })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="author" className="block text-sm font-medium text-gray-700">
-              Autore
-            </label>
-            <input
-              id="author"
-              name="author"
-              type="text"
-              value={formData.author}
-              onChange={e => setFormData({ ...formData, author: e.target.value })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="genre" className="block text-sm font-medium text-gray-700">
-              Genere
-            </label>
-            <input
-              id="genre"
-              name="genre"
-              type="text"
-              value={formData.genre || ''}
-              onChange={e => setFormData({ ...formData, genre: e.target.value })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              placeholder="Opzionale"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-              Stato
-            </label>
-            <select
-              id="status"
-              name="status"
-              value={formData.status}
-              onChange={e => setFormData({ ...formData, status: e.target.value as ReadingStatus })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="To Read">Da Leggere</option>
-              <option value="Reading">In Lettura</option>
-              <option value="Read">Letto</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="isbn" className="block text-sm font-medium text-gray-700">
-              ISBN
-            </label>
-            <input
-              id="isbn"
-              name="isbn"
-              type="text"
-              value={formData.isbn}
-              onChange={e => setFormData({ ...formData, isbn: e.target.value })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="coverUrl" className="block text-sm font-medium text-gray-700">
-              URL Copertina
-            </label>
-            <input
-              id="coverUrl"
-              name="coverUrl"
-              type="text"
-              value={formData.coverUrl}
-              onChange={e => setFormData({ ...formData, coverUrl: e.target.value })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
+              </button>
+            ))}
           </div>
         </div>
+      )}
 
+      <div className="grid gap-6 md:grid-cols-2">
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Descrizione
+          <label className="block text-sm font-medium text-gray-200">
+            Titolo
           </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={e => setFormData({ ...formData, description: e.target.value })}
-            className="mt-1 flex h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+          <Input
+            type="text"
+            name="title"
+            value={formData.title}
+            onChange={handleInputChange}
+            required
+            className="mt-1"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label htmlFor="publishedDate" className="block text-sm font-medium text-gray-700">
-              Data di Pubblicazione
-            </label>
-            <input
-              id="publishedDate"
-              name="publishedDate"
-              type="date"
-              value={formData.publishedDate}
-              onChange={e => setFormData({ ...formData, publishedDate: e.target.value })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="publisher" className="block text-sm font-medium text-gray-700">
-              Editore
-            </label>
-            <input
-              id="publisher"
-              name="publisher"
-              type="text"
-              value={formData.publisher}
-              onChange={e => setFormData({ ...formData, publisher: e.target.value })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="pageCount" className="block text-sm font-medium text-gray-700">
-              Numero di Pagine
-            </label>
-            <input
-              id="pageCount"
-              name="pageCount"
-              type="number"
-              value={formData.pageCount || ''}
-              onChange={e => setFormData({ ...formData, pageCount: parseInt(e.target.value) || 0 })}
-              className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-200">
+            Autore
+          </label>
+          <Input
+            type="text"
+            name="author"
+            value={formData.author}
+            onChange={handleInputChange}
+            required
+            className="mt-1"
+          />
         </div>
 
-        {/* Preview della copertina del libro selezionato */}
+        <div>
+          <label className="block text-sm font-medium text-gray-200">
+            Genere
+          </label>
+          <Input
+            type="text"
+            name="genre"
+            value={formData.genre}
+            onChange={handleInputChange}
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-200">
+            Stato
+          </label>
+          <Select
+            value={formData.status}
+            onValueChange={(value) => handleInputChange({ target: { name: "status", value } } as React.ChangeEvent<HTMLInputElement>)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Seleziona lo stato" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="To Read">Da leggere</SelectItem>
+              <SelectItem value="Reading">In lettura</SelectItem>
+              <SelectItem value="Read">Letto</SelectItem>
+              <SelectItem value="Completed">Completato</SelectItem>
+              <SelectItem value="Dropped">Abbandonato</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-200">
+            ISBN
+          </label>
+          <Input
+            type="text"
+            name="isbn"
+            value={formData.isbn}
+            onChange={handleInputChange}
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-200">
+            URL Copertina
+          </label>
+          <Input
+            type="url"
+            name="coverUrl"
+            value={formData.coverUrl}
+            onChange={handleInputChange}
+            className="mt-1"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-medium text-gray-200">
+            Descrizione
+          </label>
+          <Textarea
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            className="mt-1"
+            rows={4}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-200">
+            Data di Pubblicazione
+          </label>
+          <Input
+            type="date"
+            name="publishedDate"
+            value={formData.publishedDate}
+            onChange={handleInputChange}
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-200">
+            Editore
+          </label>
+          <Input
+            type="text"
+            name="publisher"
+            value={formData.publisher}
+            onChange={handleInputChange}
+            className="mt-1"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-200">
+            Numero di Pagine
+          </label>
+          <Input
+            type="number"
+            name="pageCount"
+            value={formData.pageCount}
+            onChange={handleInputChange}
+            min="0"
+            className="mt-1"
+          />
+        </div>
+
         {formData.coverUrl && (
-          <div className="mt-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Copertina</p>
-            <div className="relative w-32 h-48 bg-gray-50 rounded-lg overflow-hidden">
-              <Image
-                src={formData.coverUrl}
-                alt={formData.title}
-                width={64}
-                height={96}
-                className="rounded shadow-sm"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'https://via.placeholder.com/320x480?text=No+Cover';
-                  target.classList.add('opacity-50');
-                }}
-              />
-            </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
+              Anteprima Copertina
+            </label>
+            <CoverPreview url={formData.coverUrl} />
           </div>
         )}
+      </div>
 
-        <button type="submit" className="w-full">
-          {initialBook ? 'Aggiorna Libro' : 'Aggiungi Libro'}
-        </button>
+      <div className="flex justify-end space-x-4">
+        <Link href="/books">
+          <Button 
+            variant="outline" 
+            type="button"
+            className="bg-transparent border-gray-400 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+          >
+            Annulla
+          </Button>
+        </Link>
+        <Button 
+          type="submit" 
+          className="bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+        >
+          Salva
+        </Button>
       </div>
     </form>
   );
