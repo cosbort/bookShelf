@@ -45,6 +45,7 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [searchResults, setSearchResults] = useState<SearchBookResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [apiInUse, setApiInUse] = useState<'google' | 'openlibrary'>('google');
   const [searchDisabled, setSearchDisabled] = useState(false);
@@ -76,7 +77,6 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
     error: openLibraryError 
   } = useOpenLibrarySearch();
 
-  const isLoading = googleIsLoading || openLibraryIsLoading;
   const errorState = apiInUse === 'google' ? googleError : openLibraryError;
 
   useEffect(() => {
