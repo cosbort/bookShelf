@@ -9,6 +9,7 @@ import { Book, ReadingStatus, SearchBookResult } from '@/types/book';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Book as BookIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { formatDate } from '@/utils/dateFormat';
 
 interface BookFormProps {
   onSubmit: (book: Omit<Book, 'id'>) => void;
@@ -32,7 +33,7 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
     isbn: initialBook?.isbn || '',
     coverUrl: initialBook?.coverUrl || '',
     description: initialBook?.description || '',
-    publishedDate: initialBook?.publishedDate || '',
+    publishedDate: initialBook?.publishedDate ? new Date(initialBook.publishedDate).toISOString().split('T')[0] : '',
     publisher: initialBook?.publisher || '',
     pageCount: initialBook?.pageCount || 0,
   });
@@ -344,7 +345,7 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
             <input
               id="publishedDate"
               name="publishedDate"
-              type="text"
+              type="date"
               value={formData.publishedDate}
               onChange={e => setFormData({ ...formData, publishedDate: e.target.value })}
               className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

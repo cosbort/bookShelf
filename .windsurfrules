@@ -9,6 +9,7 @@ Every time you choose to apply a rule(s), explicitly state the rule(s) in the ou
 - [more description]
 
 ## Code Style and Structure
+- Comment all new features
 - Write concise, technical TypeScript code with accurate examples
 - Use functional and declarative programming patterns; avoid classes
 - Prefer iteration and modularization over code duplication
