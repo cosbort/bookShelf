@@ -14,18 +14,5 @@ export interface Book {
   pageCount?: number;
 }
 
-export interface SearchBookResult {
-  title: string;
-  author: string;
-  description?: string;
-  publishedDate?: string;
-  publisher?: string;
-  pageCount?: number;
-  isbn?: string;
-  coverUrl?: string;
-  genre?: string;
-  imageLinks?: {
-    thumbnail: string;
-    smallThumbnail?: string;
-  };
-}
+// Import SearchBookResult from search.ts instead of defining it here
+import type { SearchBookResult } from './search';

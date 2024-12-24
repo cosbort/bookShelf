@@ -14,6 +14,8 @@ export function BookCard({ book }: BookCardProps) {
     'To Read': 'bg-yellow-200 hover:bg-yellow-300',
     'Reading': 'bg-blue-200 hover:bg-blue-300',
     'Read': 'bg-green-200 hover:bg-green-300',
+    'Completed': 'bg-purple-200 hover:bg-purple-300',
+    'Dropped': 'bg-red-200 hover:bg-red-300',
   };
 
   return (
