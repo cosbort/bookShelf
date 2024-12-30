@@ -1,6 +1,8 @@
 import { useOpenLibrarySearch } from './useOpenLibrarySearch';
 import { useState, useRef } from 'react';
 import type { Book, SearchBookResult } from '@/types/book';
+import { env, hasGoogleBooksApiKey } from '@/config/env';
+import { toast } from 'sonner';
 
 interface GoogleBookResponse {
   items: Array<{
@@ -91,6 +93,11 @@ export function useBookSearch() {
       
       const data = await response.json();
 
+      if (!response.ok) {
+        console.error('Errore nella risposta API:', data);
+        throw new Error(`Errore API: ${data.error?.message || response.statusText}`);
+      }
+
       // Controlla se abbiamo superato la quota
       if (data.error?.message?.includes('RATE_LIMIT_EXCEEDED') || 
           data.error?.message?.includes('Quota exceeded')) {
@@ -98,10 +105,6 @@ export function useBookSearch() {
         throw new Error('Limite giornaliero delle ricerche raggiunto. Riprova domani.');
       }
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
       requestCache.current.set(url, {
         data,
         timestamp: Date.now()
@@ -132,9 +135,14 @@ export function useBookSearch() {
     
     try {
       // Prima prova con Google Books
+      if (!hasGoogleBooksApiKey()) {
+        toast.error('Chiave API di Google Books non configurata');
+        return null;
+      }
+
       try {
         const data: GoogleBookResponse = await makeRequest(
-          `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY}`
+          `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${env.googleBooksApiKey}`
         );
 
         if (data.items?.[0]) {
@@ -181,8 +189,13 @@ export function useBookSearch() {
 
     try {
       // Prima prova con Google Books
+      if (!hasGoogleBooksApiKey()) {
+        toast.error('Chiave API di Google Books non configurata');
+        return [];
+      }
+
       try {
-        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&langRestrict=it&orderBy=relevance&maxResults=5&key=${process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY}`;
+        const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&langRestrict=it&orderBy=relevance&maxResults=5&key=${env.googleBooksApiKey}`;
         const data: GoogleBookResponse = await makeRequest(url);
 
         if (data.items?.length) {

@@ -1,13 +1,13 @@
-import '../styles/globals.css';
-import { Inter } from 'next/font/google';
-import { cn } from '@/lib/utils';
-import { Toaster } from 'sonner';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "sonner";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
-export const metadata = {
-  title: 'BookShelf',
-  description: 'Your personal book collection manager',
+export const metadata: Metadata = {
+  title: "BookShelf - La tua libreria personale",
+  description: "Gestisci la tua collezione di libri con stile",
 };
 
 export default function RootLayout({
@@ -16,18 +16,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body 
-        className={cn(
-          inter.className,
-          "min-h-full bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800",
-          "flex flex-col antialiased"
-        )}
-      >
-        <div className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {children}
+    <html lang="it" className="dark">
+      <body className={`${inter.className} bg-library min-h-screen`}>
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <header className="mb-8">
+            <div className="glass-effect rounded-lg p-6 text-center">
+              <h1 className="text-4xl font-bold text-white">BookShelf</h1>
+              <p className="mt-2 text-gray-200">La tua libreria personale</p>
+            </div>
+          </header>
+          <main className="glass-effect rounded-lg p-6">
+            <div className="page-transition">{children}</div>
+          </main>
         </div>
-        <Toaster richColors position="top-center" />
+        <Toaster position="top-center" />
       </body>
     </html>
   );
