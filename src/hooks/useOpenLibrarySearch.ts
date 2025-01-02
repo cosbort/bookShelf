@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import type { Book, SearchBookResult } from '@/types/book';
+import type { Book } from '@/types/book';
+import type { SearchBookResult } from '@/types/search';
 
 interface OpenLibraryResponse {
   docs: Array<{
