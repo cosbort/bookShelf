@@ -12,6 +12,7 @@ venv/
 # IDE
 .vscode/
 .idea/
+.next/
 
 # Uploaded files
 static/covers/*
