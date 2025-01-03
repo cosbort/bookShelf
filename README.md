@@ -103,4 +103,4 @@ Prefissi per i commit:
 - "chore:" per task di manutenzione
 
 ## Licenza
-MIT License
+GNU General Public License v3.0 - vedi il file [LICENSE](LICENSE) per i dettagli.
