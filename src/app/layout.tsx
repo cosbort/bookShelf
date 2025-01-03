@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="it" className="dark">
-      <body className={`${inter.className} bg-library min-h-screen`}>
+      <body className={`${inter.className} bg-background min-h-screen`}>
         <div className="mx-auto max-w-7xl px-4 py-8">
           <header className="mb-8">
             <div className="glass-effect rounded-lg p-6 text-center">

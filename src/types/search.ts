@@ -11,8 +11,4 @@ export interface SearchBookResult {
   isbn?: string;
   coverUrl?: string;
   genre?: string;
-  imageLinks?: {
-    thumbnail: string;
-    smallThumbnail?: string;
-  };
 }

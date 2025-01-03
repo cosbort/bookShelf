@@ -44,6 +44,7 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 1000);
   const [searchResults, setSearchResults] = useState<SearchBookResult[]>([]);
+  const [selectedBook, setSelectedBook] = useState<SearchBookResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -60,6 +61,12 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
     publishedDate: initialBook?.publishedDate ? new Date(initialBook.publishedDate).toISOString().split('T')[0] : '',
     publisher: initialBook?.publisher || '',
     pageCount: initialBook?.pageCount || 0,
+    language: initialBook?.language || 'it',
+    wishList: initialBook?.wishList || false,
+    previouslyOwned: initialBook?.previouslyOwned || false,
+    upNext: initialBook?.upNext || false,
+    createdAt: initialBook?.createdAt || new Date(),
+    updatedAt: initialBook?.updatedAt || new Date()
   });
   const [quotaError, setQuotaError] = useState(false);
 
@@ -106,7 +113,18 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
         if (/^(\d{10}|\d{13})$/.test(debouncedSearchTerm.replace(/-/g, ''))) {
           const book = await searchByIsbn(debouncedSearchTerm.replace(/-/g, ''));
           if (book && isCurrentSearch) {
-            setSearchResults([book]);
+            const searchResult: SearchBookResult = {
+              title: book.title || 'Titolo sconosciuto',
+              author: book.author || 'Autore sconosciuto',
+              description: book.description,
+              publishedDate: book.publishedDate,
+              publisher: book.publisher,
+              pageCount: book.pageCount,
+              isbn: book.isbn,
+              coverUrl: book.coverUrl,
+              genre: book.genre
+            };
+            setSearchResults([searchResult]);
           }
           return;
         }
@@ -166,7 +184,24 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit({
+      title: formData.title,
+      author: formData.author,
+      genre: formData.genre,
+      status: formData.status,
+      isbn: formData.isbn,
+      coverUrl: formData.coverUrl,
+      description: formData.description,
+      publishedDate: formData.publishedDate,
+      publisher: formData.publisher,
+      pageCount: formData.pageCount,
+      language: formData.language,
+      wishList: formData.wishList,
+      previouslyOwned: formData.previouslyOwned,
+      upNext: formData.upNext,
+      createdAt: formData.createdAt,
+      updatedAt: formData.updatedAt
+    });
   };
 
   const handleInputChange = (

@@ -96,7 +96,9 @@ export function BookList() {
                         {book.publisher && <p>{book.publisher}</p>}
                         <div className="flex gap-3">
                           {book.publishedDate && <p>{formatDate(book.publishedDate)}</p>}
-                          {book.pageCount > 0 && <p>{book.pageCount} pagine</p>}
+                          <p className="text-sm text-gray-500">
+                            {book.pageCount ? `${book.pageCount} pagine` : 'Pagine non specificate'}
+                          </p>
                         </div>
                       </div>
                     )}

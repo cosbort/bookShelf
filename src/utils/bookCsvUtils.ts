@@ -81,7 +81,11 @@ async function fetchWithTimeout(url: string, options = {}) {
  * Ottiene l'URL della copertina del libro usando l'API di Google Books
  */
 async function getBookCoverUrl(isbn: string | null, title: string, author: string): Promise<string | null> {
-  const book = { title, author, isbn };
+  const book = { 
+    title, 
+    author: author || undefined,
+    isbn: isbn || undefined 
+  };
   return getBookCoverUrlFromBook(book);
 }
 
@@ -162,7 +166,7 @@ async function mapCsvToDbFields(row: any): Promise<any> {
 
   // Mappa i campi dal CSV al database
   for (const [csvField, dbField] of Object.entries(CSV_MAPPING)) {
-    mapped[dbField] = row[csvField] || null;
+    mapped[dbField] = row[csvField] ?? undefined;
   }
 
   // Converti i campi booleani
@@ -228,74 +232,80 @@ export async function importBooksFromCsv(
 
     addLog(`\n📋 Inizio importazione CSV...`);
 
-    createReadStream(filePath)
-      .pipe(countParser)
-      .on('data', () => {
-        totalRows++;
-      })
-      .on('end', () => {
-        addLog(`📊 Trovate ${totalRows} righe da importare`);
-
-        // Dopo aver contato le righe, inizia l'importazione
-        const parser = parse({
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-          relaxColumnCount: true
-        });
+    // Cancella tutti i libri esistenti
+    prisma.book.deleteMany()
+      .then(() => {
+        addLog(`🗑️ Database svuotato con successo`);
 
         createReadStream(filePath)
-          .pipe(parser)
-          .on('data', (row) => {
-            // Salta le righe vuote
-            if (Object.values(row).every(value => !value)) {
-              processedRows++;
-              onProgress?.(processedRows, totalRows);
-              return;
-            }
-
-            const operation = (async () => {
-              try {
-                const mappedData = await mapCsvToDbFields(row);
-                
-                // Cerca la copertina del libro
-                mappedData.coverUrl = await getBookCoverUrlFromBook(mappedData, addLog);
-                
-                await prisma.book.create({
-                  data: mappedData
-                });
-                results.success++;
-                addLog(`✅ Libro importato: "${mappedData.title}"`);
-              } catch (error) {
-                results.errors++;
-                const errorMessage = `❌ Errore riga ${results.success + results.errors}: ${(error as Error).message}`;
-                results.errorDetails.push(errorMessage);
-                addLog(errorMessage);
-              } finally {
-                processedRows++;
-                onProgress?.(processedRows, totalRows);
-              }
-            })();
-
-            operations.push(operation);
+          .pipe(countParser)
+          .on('data', () => {
+            totalRows++;
           })
-          .on('error', (error) => {
-            addLog(`❌ Errore durante il parsing del CSV: ${error.message}`);
-            reject(error);
-          })
-          .on('end', async () => {
-            try {
-              await Promise.all(operations);
-              addLog(`\n📊 Riepilogo importazione:`);
-              addLog(`✅ Libri importati con successo: ${results.success}`);
-              if (results.errors > 0) {
-                addLog(`❌ Errori: ${results.errors}`);
-              }
-              resolve(results);
-            } catch (error) {
-              addLog(`❌ Errore durante l'importazione: ${error}`);
-              reject(error);
-            }
+          .on('end', () => {
+            addLog(`📊 Trovate ${totalRows} righe da importare`);
+
+            // Dopo aver contato le righe, inizia l'importazione
+            const parser = parse({
+              columns: true,
+              skip_empty_lines: true,
+              trim: true,
+              relaxColumnCount: true
+            });
+
+            createReadStream(filePath)
+              .pipe(parser)
+              .on('data', (row) => {
+                // Salta le righe vuote
+                if (Object.values(row).every(value => !value)) {
+                  processedRows++;
+                  onProgress?.(processedRows, totalRows);
+                  return;
+                }
+
+                const operation = (async () => {
+                  try {
+                    const mappedData = await mapCsvToDbFields(row);
+                    
+                    // Cerca la copertina del libro
+                    mappedData.coverUrl = await getBookCoverUrlFromBook(mappedData, addLog);
+                    
+                    await prisma.book.create({
+                      data: mappedData
+                    });
+                    results.success++;
+                    addLog(`✅ Libro importato: "${mappedData.title}"`);
+                  } catch (error) {
+                    results.errors++;
+                    const errorMessage = `❌ Errore riga ${results.success + results.errors}: ${(error as Error).message}`;
+                    results.errorDetails.push(errorMessage);
+                    addLog(errorMessage);
+                  } finally {
+                    processedRows++;
+                    onProgress?.(processedRows, totalRows);
+                  }
+                })();
+
+                operations.push(operation);
+              })
+              .on('error', (error) => {
+                addLog(`❌ Errore durante il parsing del CSV: ${error.message}`);
+                reject(error);
+              })
+              .on('end', async () => {
+                try {
+                  await Promise.all(operations);
+                  addLog(`\n📊 Riepilogo importazione:`);
+                  addLog(`✅ Libri importati con successo: ${results.success}`);
+                  if (results.errors > 0) {
+                    addLog(`❌ Errori: ${results.errors}`);
+                  }
+                  resolve(results);
+                } catch (error) {
+                  addLog(`❌ Errore durante l'importazione: ${error}`);
+                  reject(error);
+                }
+              });
           });
       });
   });
@@ -314,6 +324,8 @@ export async function exportBooksToCsv(
       const totalBooks = await prisma.book.count();
       let exportedBooks = 0;
 
+      console.log(`📋 Inizio esportazione di ${totalBooks} libri...`);
+
       const books = await prisma.book.findMany();
       const writeStream = createWriteStream(filePath);
       
@@ -323,7 +335,7 @@ export async function exportBooksToCsv(
       });
 
       stringifier.on('error', (error) => {
-        console.error('Errore durante l\'esportazione:', error);
+        console.error('❌ Errore durante l\'esportazione:', error);
         reject(error);
       });
 
@@ -335,7 +347,20 @@ export async function exportBooksToCsv(
             switch(dbField) {
               case 'dateStarted':
               case 'dateFinished':
+              case 'createdAt':
+              case 'updatedAt':
                 row[csvField] = value ? new Date(value).toISOString().split('T')[0] : '';
+                break;
+              case 'wishList':
+              case 'previouslyOwned':
+              case 'upNext':
+                row[csvField] = value ? 'Yes' : 'No';
+                break;
+              case 'pageCount':
+              case 'currentPage':
+              case 'rating':
+              case 'yearPublished':
+                row[csvField] = value.toString();
                 break;
               default:
                 row[csvField] = value.toString();
@@ -347,14 +372,27 @@ export async function exportBooksToCsv(
         
         stringifier.write(row);
         exportedBooks++;
+        if (exportedBooks % 10 === 0 || exportedBooks === totalBooks) {
+          console.log(`📊 Esportati ${exportedBooks}/${totalBooks} libri (${Math.round((exportedBooks/totalBooks)*100)}%)`);
+        }
         onProgress?.(exportedBooks, totalBooks);
       }
 
       stringifier.end();
-      writeStream.on('finish', () => resolve(books.length));
+      
+      writeStream.on('finish', () => {
+        console.log(`✅ Esportazione completata con successo! ${books.length} libri esportati in ${filePath}`);
+        resolve(books.length);
+      });
+
+      writeStream.on('error', (error) => {
+        console.error('❌ Errore durante la scrittura del file:', error);
+        reject(error);
+      });
+
       stringifier.pipe(writeStream);
     } catch (error) {
-      console.error('Errore durante l\'esportazione:', error);
+      console.error('❌ Errore durante l\'esportazione:', error);
       reject(error);
     }
   });

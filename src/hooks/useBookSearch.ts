@@ -1,6 +1,7 @@
 import { useOpenLibrarySearch } from './useOpenLibrarySearch';
 import { useState, useRef } from 'react';
-import type { Book, SearchBookResult } from '@/types/book';
+import type { Book } from '@/types/book';
+import type { SearchBookResult } from '@/types/search';
 import { env, hasGoogleBooksApiKey } from '@/config/env';
 import { toast } from 'sonner';
 
@@ -216,7 +217,15 @@ export function useBookSearch() {
         return [];
       }
 
-      return openLibraryData.docs.map(book => ({
+      return openLibraryData.docs.map((book: {
+        title: string;
+        author_name?: string[];
+        subject?: string[];
+        cover_i?: number;
+        first_publish_year?: number;
+        publisher?: string[];
+        isbn?: string[];
+      }) => ({
         title: book.title,
         author: book.author_name?.[0] || 'Autore sconosciuto',
         genre: book.subject?.[0],
@@ -237,14 +246,14 @@ export function useBookSearch() {
     }
   };
 
-  const transformGoogleBookToBook = (googleBook: GoogleBookResponse['items'][0]): SearchBookResult => {
-    const isbn = googleBook.volumeInfo.industryIdentifiers?.find(
+  const transformGoogleBookToBook = (book: GoogleBookResponse['items'][0]): SearchBookResult => {
+    const isbn = book.volumeInfo.industryIdentifiers?.find(
       id => id.type === 'ISBN_13' || id.type === 'ISBN_10'
     )?.identifier;
 
     // Garantiamo che title e author siano sempre presenti
-    const title = googleBook.volumeInfo.title;
-    const author = googleBook.volumeInfo.authors?.[0] || 'Autore sconosciuto';
+    const title = book.volumeInfo.title;
+    const author = book.volumeInfo.authors?.[0] || 'Autore sconosciuto';
 
     if (!title) {
       throw new Error('Book title is required');
@@ -253,12 +262,12 @@ export function useBookSearch() {
     return {
       title,
       author,
-      genre: googleBook.volumeInfo.categories?.[0],
-      coverUrl: googleBook.volumeInfo.imageLinks?.thumbnail,
-      description: googleBook.volumeInfo.description,
-      publishedDate: googleBook.volumeInfo.publishedDate,
-      publisher: googleBook.volumeInfo.publisher,
-      pageCount: googleBook.volumeInfo.pageCount,
+      genre: book.volumeInfo.categories?.[0],
+      coverUrl: book.volumeInfo.imageLinks?.thumbnail,
+      description: book.volumeInfo.description,
+      publishedDate: book.volumeInfo.publishedDate,
+      publisher: book.volumeInfo.publisher,
+      pageCount: book.volumeInfo.pageCount,
       isbn,
     };
   };

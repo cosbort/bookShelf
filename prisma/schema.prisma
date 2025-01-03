@@ -14,17 +14,33 @@ datasource db {
 }
 
 model Book {
-  id           String   @id @default(uuid())
-  isbn         String?
-  title        String
-  author       String
-  genre        String
-  status       String
-  coverUrl     String?
-  description  String?
-  publishedDate String?
-  publisher    String?
-  pageCount    Int?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String    @id @default(uuid())
+  isbn            String?
+  title           String
+  originalTitle   String?   // Nuovo campo
+  subtitle        String?   // Nuovo campo
+  author          String
+  authorLastFirst String?   // Nuovo campo
+  translator      String?   // Nuovo campo
+  publisher       String?
+  genre           String?
+  status          String
+  coverUrl        String?
+  description     String?
+  publishedDate   String?
+  yearPublished   Int?      // Nuovo campo
+  language        String    @default("it") // Nuovo campo
+  pageCount       Int?
+  rating          Float?    // Nuovo campo
+  location        String?   // Nuovo campo per Physical Location
+  dateStarted     DateTime? // Nuovo campo
+  dateFinished    DateTime? // Nuovo campo
+  currentPage     Int?      // Nuovo campo
+  notes           String?   // Nuovo campo
+  category        String?   // Nuovo campo
+  wishList        Boolean   @default(false) // Nuovo campo
+  previouslyOwned Boolean   @default(false) // Nuovo campo
+  upNext          Boolean   @default(false) // Nuovo campo
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
