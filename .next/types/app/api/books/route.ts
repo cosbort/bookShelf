@@ -1,4 +1,4 @@
-// File: c:\WindSurf\CascadeProjects\windsurf-project\src\app\api\books\route.ts
+// File: C:\WindSurf\CascadeProjects\windsurf-project\src\app\api\books\route.ts
 import * as entry from '../../../../../src/app/api/books/route.js'
 import type { NextRequest } from 'next/server.js'
 

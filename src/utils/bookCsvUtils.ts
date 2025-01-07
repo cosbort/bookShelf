@@ -29,7 +29,8 @@ const CSV_MAPPING = {
   'Wish List': 'wishList',
   'Previously Owned': 'previouslyOwned',
   'Up Next': 'upNext',
-  'ISBN': 'isbn'
+  'ISBN': 'isbn',
+  'Cover URL': 'coverUrl'
 };
 
 interface CsvRow {
@@ -162,7 +163,9 @@ async function searchGoogleBooks(query: string): Promise<string | null> {
            imageLinks?.thumbnail ||
            null;
   } catch (error) {
-    console.warn('Errore Google Books:', error);
+    if (error instanceof Error) {
+      console.warn('Errore Google Books:', error.message);
+    }
     return null;
   }
 }
@@ -195,7 +198,9 @@ async function searchOpenLibrary(query: { title: string; author?: string; isbn?:
 
     return null;
   } catch (error) {
-    console.warn('Errore OpenLibrary:', error);
+    if (error instanceof Error) {
+      console.warn('Errore OpenLibrary:', error.message);
+    }
     return null;
   }
 }
@@ -233,25 +238,37 @@ export async function getBookCoverUrlFromBook(
 }
 
 async function getGoogleBooksCover(book: Partial<Book>): Promise<string | null> {
+  if (!hasGoogleBooksApiKey) return null;
+
   try {
-    const query = `${book.title} ${book.author || ''}`.trim();
+    const query = book.isbn 
+      ? `isbn:${book.isbn}`
+      : `intitle:${book.title}${book.author ? ` inauthor:${book.author}` : ''}`;
+
     const response = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`
+      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${env.GOOGLE_BOOKS_API_KEY}`
     );
     
-    if (!response.ok) {
-      throw new Error(`Google Books API error: ${response.status}`);
+    const data = await response.json();
+
+    // Se abbiamo superato la quota, lanciamo un errore specifico
+    if (data.error?.code === 429) {
+      throw new Error('RATE_LIMIT_EXCEEDED');
     }
 
-    const data = await response.json();
-    if (data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail) {
-      return data.items[0].volumeInfo.imageLinks.thumbnail;
+    if (!data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail) {
+      return null;
     }
-    return null;
+
+    // Converti l'URL da http a https se necessario
+    const coverUrl = data.items[0].volumeInfo.imageLinks.thumbnail.replace('http://', 'https://');
+    return coverUrl;
   } catch (error) {
-    if (error instanceof Error) {
-      console.error('Google Books API error:', error.message);
+    if (error instanceof Error && error.message === 'RATE_LIMIT_EXCEEDED') {
+      console.warn('Google Books API quota exceeded, falling back to OpenLibrary');
+      return getOpenLibraryCover(book);
     }
+    console.error('Error fetching Google Books cover:', error);
     return null;
   }
 }
@@ -292,36 +309,86 @@ async function getOpenLibraryCover(book: Partial<Book>): Promise<string | null> 
 }
 
 /**
- * Mappa i campi dal CSV al formato del database
+ * Verifica se l'immagine è accessibile
  */
-async function processCsvRow(row: Record<string, string>): Partial<Book> {
+async function isImageAccessible(url: string): Promise<boolean> {
+  try {
+    const response = await fetchWithTimeout(url, { timeout: 5000 });
+    const contentType = response.headers.get('content-type');
+    return response.ok && Boolean(contentType?.startsWith('image/'));
+  } catch (error) {
+    console.error('Error checking image accessibility:', error);
+    return false;
+  }
+}
+
+async function getCoverUrl(isbn: string | undefined, title: string, author: string, csvCoverUrl: string | undefined): Promise<string | undefined> {
+  // Se c'è un URL nel CSV e sembra valido, verifica che l'immagine sia accessibile
+  if (csvCoverUrl?.trim() && (csvCoverUrl.startsWith('http://') || csvCoverUrl.startsWith('https://'))) {
+    const url = csvCoverUrl.trim();
+    if (await isImageAccessible(url)) {
+      return url;
+    }
+    console.warn(`Image not accessible at ${url}, falling back to OpenLibrary`);
+  }
+
+  // Altrimenti cerca su OpenLibrary
+  if (!isbn && !title) return undefined;
+
+  try {
+    let query = isbn ? `isbn:${isbn}` : `title:${title}${author ? ` author:${author}` : ''}`;
+    const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=cover_i`);
+    const data = await response.json();
+
+    if (data.docs && data.docs[0] && data.docs[0].cover_i) {
+      const openLibraryUrl = `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-L.jpg`;
+      if (await isImageAccessible(openLibraryUrl)) {
+        return openLibraryUrl;
+      }
+      console.warn(`Image not accessible at ${openLibraryUrl}`);
+    }
+  } catch (error) {
+    console.error('Error fetching cover:', error);
+  }
+  return undefined;
+}
+
+async function processCsvRow(row: Record<string, string>): Promise<Partial<Book>> {
+  const isbn = row['ISBN']?.trim();
+  const title = row['Title']?.trim() || '';
+  const author = row['Author']?.trim() || '';
+  const csvCoverUrl = row['Cover URL']?.trim();
+  
+  const coverUrl = await getCoverUrl(isbn, title, author, csvCoverUrl);
+
   return {
     id: crypto.randomUUID(),
-    title: row['Title'] || '',
-    originalTitle: row['Original Title'],
-    subtitle: row['Subtitle'],
-    author: row['Author'] || '',
-    authorLastFirst: row['Author (Last, First)'],
-    translator: row['Translator'],
-    publisher: row['Publisher'],
-    publishedDate: row['Date Published'],
-    yearPublished: row['Year Published'] ? parseInt(row['Year Published'], 10) : undefined,
-    genre: row['Genre'],
-    description: row['Summary'],
-    language: row['Language'] || 'Italiano',
-    pageCount: row['Number of Pages'] ? parseInt(row['Number of Pages'], 10) : undefined,
-    rating: row['Rating'] ? parseFloat(row['Rating']) : undefined,
-    location: row['Physical Location'],
-    status: (row['Status'] as ReadingStatus) || 'To Read',
-    dateStarted: row['Date Started'] ? new Date(row['Date Started']) : undefined,
-    dateFinished: row['Date Finished'] ? new Date(row['Date Finished']) : undefined,
-    currentPage: row['Current Page'] ? parseInt(row['Current Page'], 10) : undefined,
-    notes: row['Notes'],
-    category: row['Category'],
-    wishList: stringToBoolean(row['Wish List']),
-    previouslyOwned: stringToBoolean(row['Previously Owned']),
-    upNext: stringToBoolean(row['Up Next']),
-    coverUrl: undefined,
+    title,
+    originalTitle: row['Original Title']?.trim(),
+    subtitle: row['Subtitle']?.trim(),
+    author,
+    authorLastFirst: row['Author (Last, First)']?.trim(),
+    translator: row['Translator']?.trim(),
+    publisher: row['Publisher']?.trim(),
+    publishedDate: row['Date Published']?.trim(),
+    yearPublished: row['Year Published'] ? parseInt(row['Year Published'].trim(), 10) : undefined,
+    genre: row['Genre']?.trim(),
+    description: row['Summary']?.trim(),
+    language: row['Language']?.trim() || 'Italiano',
+    pageCount: row['Number of Pages'] ? parseInt(row['Number of Pages'].trim(), 10) : undefined,
+    rating: row['Rating'] ? parseFloat(row['Rating'].trim()) : undefined,
+    location: row['Physical Location']?.trim(),
+    status: (row['Status']?.trim() as ReadingStatus) || 'To Read',
+    dateStarted: row['Date Started'] ? new Date(row['Date Started'].trim()) : undefined,
+    dateFinished: row['Date Finished'] ? new Date(row['Date Finished'].trim()) : undefined,
+    currentPage: row['Current Page'] ? parseInt(row['Current Page'].trim(), 10) : undefined,
+    notes: row['Notes']?.trim(),
+    category: row['Category']?.trim(),
+    wishList: stringToBoolean(row['Wish List']?.trim()),
+    previouslyOwned: stringToBoolean(row['Previously Owned']?.trim()),
+    upNext: stringToBoolean(row['Up Next']?.trim()),
+    isbn,
+    coverUrl,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -340,7 +407,12 @@ export async function importBooksFromCsv(
   logs: string[];
 }> {
   return new Promise(async (resolve, reject) => {
-    const results = { 
+    const results: {
+      success: number;
+      errors: number;
+      errorDetails: string[];
+      logs: string[];
+    } = { 
       success: 0, 
       errors: 0, 
       errorDetails: [], 
@@ -357,17 +429,18 @@ export async function importBooksFromCsv(
 
     const updateProgress = async () => {
       processedRows++;
-      const progress = Math.round((processedRows / totalRows) * 100);
+      const progress = Math.min(Math.round((processedRows / totalRows) * 100), 100);
       
-      // Invia aggiornamenti solo se la percentuale è cambiata
-      if (progress > lastProgressUpdate) {
+      // Invia aggiornamenti solo se la percentuale è cambiata e non supera il 100%
+      if (progress > lastProgressUpdate && progress <= 100) {
         try {
-          await writer.write(
-            new TextEncoder().encode(JSON.stringify({ progress }) + "\n")
-          );
+          const progressMessage = JSON.stringify({ progress }) + "\n";
+          const encoder = new TextEncoder();
+          const data = encoder.encode(progressMessage);
+          await writer.write(data);
           lastProgressUpdate = progress;
         } catch (error) {
-          if (error instanceof TypeError && error.code === 'ERR_INVALID_STATE') {
+          if (error instanceof TypeError && String(error).includes('ERR_INVALID_STATE')) {
             // Ignora gli errori di stream chiuso
             console.warn('Stream chiuso, impossibile inviare aggiornamenti');
           } else {
@@ -433,16 +506,27 @@ export async function importBooksFromCsv(
           await Promise.all(operations);
           isStreamActive = false;
           
+          // Assicurati che il progresso finale sia 100%
+          if (lastProgressUpdate < 100) {
+            try {
+              const progressMessage = JSON.stringify({ progress: 100 }) + "\n";
+              const encoder = new TextEncoder();
+              const data = encoder.encode(progressMessage);
+              await writer.write(data);
+            } catch (error) {
+              console.warn('Errore nell\'invio del progresso finale:', error);
+            }
+          }
+
           try {
-            await writer.write(
-              new TextEncoder().encode(
-                JSON.stringify({
-                  success: results.success,
-                  errors: results.errors,
-                  errorDetails: results.errorDetails
-                }) + "\n"
-              )
-            );
+            const resultMessage = JSON.stringify({
+              success: results.success,
+              errors: results.errors,
+              errorDetails: results.errorDetails
+            }) + "\n";
+            const encoder = new TextEncoder();
+            const data = encoder.encode(resultMessage);
+            await writer.write(data);
           } catch (error) {
             console.warn('Errore nell\'invio del risultato finale:', error);
           }
@@ -460,10 +544,11 @@ export async function importBooksFromCsv(
 
     const processRow = async (row: CsvRow) => {
       try {
-        const mappedData = await processCsvRow(row);
-        
-        // Cerca la copertina del libro
-        mappedData.coverUrl = await getBookCoverUrlFromBook(mappedData, addLog);
+        // Convertiamo CsvRow in Record<string, string> gestendo i valori undefined
+        const sanitizedRow: Record<string, string> = Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [key, value ?? ''])
+        );
+        const mappedData = await processCsvRow(sanitizedRow);
         
         // Cerca se esiste già un libro con lo stesso ISBN o titolo+autore
         const existingBook = await prisma.book.findFirst({
@@ -490,19 +575,16 @@ export async function importBooksFromCsv(
         } else {
           // Crea un nuovo libro
           await prisma.book.create({
-            data: mappedData
+            data: mappedData as any
           });
-          addLog(`✅ Nuovo libro importato: "${mappedData.title}"`);
+          addLog(`✨ Nuovo libro aggiunto: "${mappedData.title}"`);
         }
-        
         results.success++;
       } catch (error) {
         results.errors++;
-        const errorMessage = `❌ Errore riga ${results.success + results.errors}: ${(error as Error).message}`;
+        const errorMessage = `❌ Errore nell'importazione della riga: ${JSON.stringify(row)}\n${error}`;
         results.errorDetails.push(errorMessage);
         addLog(errorMessage);
-      } finally {
-        processedRows++;
       }
     };
   });
