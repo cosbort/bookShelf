@@ -1,4 +1,4 @@
-// File: c:\WindSurf\CascadeProjects\windsurf-project\src\app\books\[id]\page.tsx
+// File: C:\WindSurf\CascadeProjects\windsurf-project\src\app\books\[id]\page.tsx
 import * as entry from '../../../../../src/app/books/[id]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
