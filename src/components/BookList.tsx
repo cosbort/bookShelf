@@ -65,10 +65,22 @@ export function BookList() {
                       alt={book.title}
                       fill
                       className="book-image object-cover"
-                      onError={(e) => {
+                      onError={async (e) => {
                         const target = e.target as HTMLImageElement;
-                        target.src = "https://via.placeholder.com/300x450?text=No+Cover";
-                        target.classList.add("opacity-50");
+                        try {
+                          // Prova a ottenere la copertina da Google Books
+                          const response = await fetch(`/api/books/cover?query=${encodeURIComponent(book.title + ' ' + book.author)}`);
+                          const data = await response.json();
+                          if (data.coverUrl) {
+                            target.src = data.coverUrl;
+                          } else {
+                            target.src = "/images/no-cover.png";
+                            target.classList.add("opacity-50");
+                          }
+                        } catch (error) {
+                          target.src = "/images/no-cover.png";
+                          target.classList.add("opacity-50");
+                        }
                       }}
                     />
                   ) : (
