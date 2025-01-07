@@ -29,45 +29,25 @@ export async function POST(request: NextRequest) {
     const stream = new TransformStream()
     const writer = stream.writable.getWriter()
 
-    // Start the import process
-    try {
-      const result = await importBooksFromCsv(tempPath, async (current, total) => {
-        const progress = Math.round((current / total) * 100)
-        try {
-          await writer.write(
-            new TextEncoder().encode(JSON.stringify({ progress }) + "\n")
-          )
-        } catch (error) {
-          console.error("Errore nell'invio del progresso:", error)
-        }
-      });
+    // Start the import process in the background
+    importBooksFromCsv(tempPath, writer)
+      .catch(error => {
+        console.error("Errore durante l'importazione:", error)
+      })
+      .finally(() => {
+        writer.close().catch(() => {
+          // Ignora gli errori di chiusura
+        })
+      })
 
-      await writer.write(
-        new TextEncoder().encode(
-          JSON.stringify({ 
-            success: result.success,
-            errors: result.errors,
-            errorDetails: result.errorDetails 
-          }) + "\n"
-        )
-      );
-      
-      await writer.close();
-      return new NextResponse(stream.readable, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        },
-      });
-    } catch (error) {
-      console.error("Errore durante l'importazione:", error);
-      await writer.close();
-      return NextResponse.json(
-        { error: "Errore durante l'importazione del file" },
-        { status: 500 }
-      );
-    }
+    // Return the stream immediately
+    return new NextResponse(stream.readable, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    })
   } catch (error) {
     console.error("Errore durante l'importazione:", error)
     return NextResponse.json(

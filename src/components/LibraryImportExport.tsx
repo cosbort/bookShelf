@@ -57,12 +57,23 @@ export function LibraryImportExport({ onImport, onExport }: ImportExportProps) {
             } else if (data.success !== undefined) {
               toast({
                 title: "Importazione completata",
-                description: `Importati ${data.success} libri con ${data.errors} errori`,
+                description: `${data.success} libri importati/aggiornati con ${data.errors} errori`,
               })
               if (data.errorDetails?.length > 0) {
                 console.error("Dettagli errori:", data.errorDetails)
+                // Mostra gli errori in un toast separato
+                toast({
+                  variant: "destructive",
+                  title: "Errori durante l'importazione",
+                  description: data.errorDetails.slice(0, 3).join("\n") + 
+                    (data.errorDetails.length > 3 ? `\n...e altri ${data.errorDetails.length - 3} errori` : ""),
+                })
               }
-              if (onImport) onImport()
+              if (onImport) {
+                // Aggiungi un piccolo delay per assicurarsi che il database sia aggiornato
+                await new Promise(resolve => setTimeout(resolve, 500))
+                onImport()
+              }
             }
           } catch (e) {
             console.error("Errore nel parsing della risposta:", e)

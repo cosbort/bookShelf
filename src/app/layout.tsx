@@ -1,14 +1,9 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
-
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "BookShelf - La tua libreria personale",
-  description: "Gestisci la tua collezione di libri con stile",
-};
+import { ThemeProvider } from "next-themes";
+import { cn } from "@/lib/utils";
+import { Navbar } from "@/components/Navbar";
+import { fontSans } from "@/lib/fonts";
 
 export default function RootLayout({
   children,
@@ -17,19 +12,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="it" className="dark">
-      <body className={`${inter.className} bg-background min-h-screen`}>
-        <div className="mx-auto max-w-7xl px-4 py-8">
-          <header className="mb-8">
-            <div className="glass-effect rounded-lg p-6 text-center">
-              <h1 className="text-4xl font-bold text-white">BookShelf</h1>
-              <p className="mt-2 text-gray-200">La tua libreria personale</p>
-            </div>
-          </header>
-          <main className="glass-effect rounded-lg p-6">
-            <div className="page-transition">{children}</div>
-          </main>
-        </div>
-        <Toaster position="top-center" />
+      <body className={cn("min-h-screen bg-slate-950 font-sans antialiased", fontSans.variable)}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <div className="relative min-h-screen">
+            <Navbar />
+            {children}
+          </div>
+        </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   );

@@ -1,25 +1,26 @@
 import { parse } from 'csv-parse';
 import { stringify } from 'csv-stringify';
-import { Book } from '@/types/book';
+import { Book, ReadingStatus } from '@/types/book';
 import { prisma } from '@/lib/prisma';
 import { env, hasGoogleBooksApiKey } from '@/config/env';
 
 const CSV_MAPPING = {
   'Title': 'title',
-  'Author': 'author',
-  'Status': 'status',
   'Original Title': 'originalTitle',
   'Subtitle': 'subtitle',
+  'Author': 'author',
   'Author (Last, First)': 'authorLastFirst',
   'Translator': 'translator',
   'Publisher': 'publisher',
+  'Date Published': 'publishedDate',
+  'Year Published': 'yearPublished',
   'Genre': 'genre',
   'Summary': 'description',
-  'Year Published': 'yearPublished',
   'Language': 'language',
   'Number of Pages': 'pageCount',
   'Rating': 'rating',
   'Physical Location': 'location',
+  'Status': 'status',
   'Date Started': 'dateStarted',
   'Date Finished': 'dateFinished',
   'Current Page': 'currentPage',
@@ -148,8 +149,9 @@ async function searchGoogleBooks(query: string): Promise<string | null> {
   if (!GOOGLE_BOOKS_API_KEY) return null;
   
   try {
+    const encodedQuery = encodeURIComponent(query);
     const response = await fetchWithRetry(
-      `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${GOOGLE_BOOKS_API_KEY}&fields=items(volumeInfo/imageLinks)&maxResults=1`
+      `https://www.googleapis.com/books/v1/volumes?q=${encodedQuery}&key=${GOOGLE_BOOKS_API_KEY}&fields=items(volumeInfo/imageLinks)&maxResults=1`
     );
     
     const data = await response.json();
@@ -161,6 +163,39 @@ async function searchGoogleBooks(query: string): Promise<string | null> {
            null;
   } catch (error) {
     console.warn('Errore Google Books:', error);
+    return null;
+  }
+}
+
+async function searchOpenLibrary(query: { title: string; author?: string; isbn?: string }): Promise<string | null> {
+  try {
+    // Prima prova con l'ISBN se disponibile
+    if (query.isbn) {
+      const response = await fetchWithRetry(
+        `https://openlibrary.org/api/books?bibkeys=ISBN:${query.isbn}&format=json&jscmd=data`
+      );
+      const data = await response.json();
+      const bookData = data[`ISBN:${query.isbn}`];
+      if (bookData?.cover?.medium) {
+        return bookData.cover.medium;
+      }
+    }
+
+    // Se non trova con l'ISBN, prova con titolo e autore
+    const searchQuery = encodeURIComponent(`${query.title}${query.author ? ` ${query.author}` : ''}`);
+    const response = await fetchWithRetry(
+      `https://openlibrary.org/search.json?q=${searchQuery}&limit=1`
+    );
+    
+    const data = await response.json();
+    if (data.docs?.[0]?.cover_i) {
+      const coverId = data.docs[0].cover_i;
+      return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('Errore OpenLibrary:', error);
     return null;
   }
 }
@@ -178,133 +213,118 @@ async function getBookCoverUrl(isbn: string | null, title: string, author: strin
 }
 
 export async function getBookCoverUrlFromBook(
-  book: { title: string; author?: string; isbn?: string },
+  book: Partial<Book>,
   logger?: (message: string) => void
 ): Promise<string | null> {
-  const { title, author, isbn } = book;
-  
-  const log = (message: string) => {
-    console.log(message);
-    logger?.(message);
-  };
+  try {
+    // Prima prova con Google Books
+    const googleCover = await getGoogleBooksCover(book);
+    if (googleCover) return googleCover;
 
-  // Controlla la cache
-  const cacheKey = `${isbn || ''}-${title}-${author || ''}`;
-  if (coverCache.has(cacheKey)) {
-    const cachedUrl = coverCache.get(cacheKey);
-    log(`📦 Copertina recuperata dalla cache per: "${title}"`);
-    return cachedUrl;
+    // Se non trova nulla, prova con OpenLibrary
+    const openLibraryCover = await getOpenLibraryCover(book);
+    return openLibraryCover || null;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Errore nel recupero della copertina:', error.message);
+    }
+    return null;
   }
+}
 
-  return new Promise((resolve) => {
-    batchProcessor.add(async () => {
-      try {
-        // 1. Prima prova con OpenLibrary ISBN
-        if (isbn) {
-          try {
-            log(`🔍 Ricerca copertina su OpenLibrary per ISBN: ${isbn}`);
-            const response = await fetchWithRetry(
-              `https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`
-            );
-            const data = await response.json();
-            const bookData = data[`ISBN:${isbn}`];
-            if (bookData?.cover?.medium) {
-              log(`✅ Copertina trovata su OpenLibrary per ISBN: ${isbn}`);
-              coverCache.set(cacheKey, bookData.cover.medium);
-              resolve(bookData.cover.medium);
-              return;
-            }
-          } catch (error) {
-            log(`⚠️ Errore OpenLibrary ISBN: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
-          }
-        }
+async function getGoogleBooksCover(book: Partial<Book>): Promise<string | null> {
+  try {
+    const query = `${book.title} ${book.author || ''}`.trim();
+    const response = await fetch(
+      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Google Books API error: ${response.status}`);
+    }
 
-        // 2. Prova con la ricerca per titolo su OpenLibrary
-        try {
-          const encodedTitle = encodeURIComponent(title);
-          const encodedAuthor = author ? encodeURIComponent(author) : '';
-          const query = `${encodedTitle}${encodedAuthor ? ` ${encodedAuthor}` : ''}`;
-          
-          log(`🔍 Ricerca su OpenLibrary per: "${query}"`);
-          const response = await fetchWithRetry(
-            `https://openlibrary.org/search.json?q=${query}&limit=1`
-          );
-          
-          const data = await response.json();
-          if (data.docs?.[0]?.cover_i) {
-            const coverId = data.docs[0].cover_i;
-            const coverUrl = `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
-            log(`✅ Copertina trovata su OpenLibrary per: "${title}"`);
-            coverCache.set(cacheKey, coverUrl);
-            resolve(coverUrl);
-            return;
-          }
-        } catch (error) {
-          log(`⚠️ Errore OpenLibrary ricerca: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
-        }
+    const data = await response.json();
+    if (data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail) {
+      return data.items[0].volumeInfo.imageLinks.thumbnail;
+    }
+    return null;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Google Books API error:', error.message);
+    }
+    return null;
+  }
+}
 
-        // 3. Prova con Google Books come ultima risorsa
-        try {
-          log(`🔍 Ricerca su Google Books per: "${title}"`);
-          const query = encodeURIComponent(`${title}${author ? ` ${author}` : ''}${isbn ? ` isbn:${isbn}` : ''}`);
-          const googleCover = await searchGoogleBooks(query);
-          
-          if (googleCover) {
-            log(`✅ Copertina trovata su Google Books per: "${title}"`);
-            coverCache.set(cacheKey, googleCover);
-            resolve(googleCover);
-            return;
-          }
-        } catch (error) {
-          log(`⚠️ Errore Google Books: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
-        }
-
-        // Se tutto fallisce, restituisci null
-        log(`❌ Nessuna copertina trovata per: "${title}"`);
-        coverCache.set(cacheKey, null);
-        resolve(null);
-      } catch (error) {
-        log(`❌ Errore generale: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
-        coverCache.set(cacheKey, null);
-        resolve(null);
+async function getOpenLibraryCover(book: Partial<Book>): Promise<string | null> {
+  try {
+    // Prima prova con l'ISBN se disponibile
+    if (book.isbn) {
+      const response = await fetch(
+        `https://openlibrary.org/api/books?bibkeys=ISBN:${book.isbn}&format=json&jscmd=data`
+      );
+      const data = await response.json();
+      const bookData = data[`ISBN:${book.isbn}`];
+      if (bookData?.cover?.medium) {
+        return bookData.cover.medium;
       }
-    });
-  });
+    }
+
+    // Se non trova con l'ISBN, prova con titolo e autore
+    const searchQuery = encodeURIComponent(`${book.title}${book.author ? ` ${book.author}` : ''}`);
+    const response = await fetch(
+      `https://openlibrary.org/search.json?q=${searchQuery}&limit=1`
+    );
+    
+    const data = await response.json();
+    if (data.docs?.[0]?.cover_i) {
+      const coverId = data.docs[0].cover_i;
+      return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
+    }
+
+    return null;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('OpenLibrary API error:', error.message);
+    }
+    return null;
+  }
 }
 
 /**
  * Mappa i campi dal CSV al formato del database
  */
-async function mapCsvToDbFields(row: CsvRow): Promise<any> {
-  const mapped: any = {};
-
-  // Mappa i campi dal CSV al database
-  for (const [csvField, dbField] of Object.entries(CSV_MAPPING)) {
-    mapped[dbField] = row[csvField] ?? undefined;
-  }
-
-  // Converti i campi booleani
-  mapped.wishList = stringToBoolean(mapped.wishList);
-  mapped.previouslyOwned = stringToBoolean(mapped.previouslyOwned);
-  mapped.upNext = stringToBoolean(mapped.upNext);
-
-  // Converti le date
-  mapped.dateStarted = parseDate(mapped.dateStarted);
-  mapped.dateFinished = parseDate(mapped.dateFinished);
-
-  // Converti i numeri
-  mapped.pageCount = parseNumber(mapped.pageCount);
-  mapped.currentPage = parseNumber(mapped.currentPage);
-  mapped.rating = parseNumber(mapped.rating) || 0;
-  mapped.yearPublished = parseNumber(mapped.yearPublished);
-
-  // Imposta valori predefiniti per campi obbligatori
-  mapped.title = mapped.title || 'Senza titolo';
-  mapped.author = mapped.author || 'Autore sconosciuto';
-  mapped.status = mapped.status || 'Unread';
-  mapped.language = mapped.language || 'Italiano';
-
-  return mapped;
+async function processCsvRow(row: Record<string, string>): Partial<Book> {
+  return {
+    id: crypto.randomUUID(),
+    title: row['Title'] || '',
+    originalTitle: row['Original Title'],
+    subtitle: row['Subtitle'],
+    author: row['Author'] || '',
+    authorLastFirst: row['Author (Last, First)'],
+    translator: row['Translator'],
+    publisher: row['Publisher'],
+    publishedDate: row['Date Published'],
+    yearPublished: row['Year Published'] ? parseInt(row['Year Published'], 10) : undefined,
+    genre: row['Genre'],
+    description: row['Summary'],
+    language: row['Language'] || 'Italiano',
+    pageCount: row['Number of Pages'] ? parseInt(row['Number of Pages'], 10) : undefined,
+    rating: row['Rating'] ? parseFloat(row['Rating']) : undefined,
+    location: row['Physical Location'],
+    status: (row['Status'] as ReadingStatus) || 'To Read',
+    dateStarted: row['Date Started'] ? new Date(row['Date Started']) : undefined,
+    dateFinished: row['Date Finished'] ? new Date(row['Date Finished']) : undefined,
+    currentPage: row['Current Page'] ? parseInt(row['Current Page'], 10) : undefined,
+    notes: row['Notes'],
+    category: row['Category'],
+    wishList: stringToBoolean(row['Wish List']),
+    previouslyOwned: stringToBoolean(row['Previously Owned']),
+    upNext: stringToBoolean(row['Up Next']),
+    coverUrl: undefined,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 }
 
 /**
@@ -312,31 +332,55 @@ async function mapCsvToDbFields(row: CsvRow): Promise<any> {
  */
 export async function importBooksFromCsv(
   filePath: string,
-  onProgress?: (current: number, total: number) => void
-): Promise<{ 
-  success: number; 
-  errors: number; 
+  writer: WritableStreamDefaultWriter<Uint8Array>
+): Promise<{
+  success: number;
+  errors: number;
   errorDetails: string[];
   logs: string[];
 }> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const results = { 
       success: 0, 
       errors: 0, 
-      errorDetails: [] as string[],
-      logs: [] as string[]
+      errorDetails: [], 
+      logs: [] 
     };
-
     const operations: Promise<void>[] = [];
     let totalRows = 0;
     let processedRows = 0;
+    let lastProgressUpdate = 0;
 
     const addLog = (message: string) => {
-      console.log(message);
       results.logs.push(message);
     };
 
+    const updateProgress = async () => {
+      processedRows++;
+      const progress = Math.round((processedRows / totalRows) * 100);
+      
+      // Invia aggiornamenti solo se la percentuale è cambiata
+      if (progress > lastProgressUpdate) {
+        try {
+          await writer.write(
+            new TextEncoder().encode(JSON.stringify({ progress }) + "\n")
+          );
+          lastProgressUpdate = progress;
+        } catch (error) {
+          if (error instanceof TypeError && error.code === 'ERR_INVALID_STATE') {
+            // Ignora gli errori di stream chiuso
+            console.warn('Stream chiuso, impossibile inviare aggiornamenti');
+          } else {
+            console.error('Errore nell\'invio del progresso:', error);
+          }
+        }
+      }
+    };
+
+    addLog(`\n📋 Inizio importazione CSV...`);
+
     // Prima conta il numero totale di righe
+    const countStream = require('fs').createReadStream(filePath);
     const countParser = parse({
       columns: true,
       skip_empty_lines: true,
@@ -344,83 +388,123 @@ export async function importBooksFromCsv(
       relaxColumnCount: true
     });
 
-    addLog(`\n📋 Inizio importazione CSV...`);
+    // Utilizza una Promise per contare le righe
+    await new Promise((resolveCount) => {
+      countStream
+        .pipe(countParser)
+        .on('data', () => {
+          totalRows++;
+        })
+        .on('end', () => {
+          addLog(`📊 Trovate ${totalRows} righe da importare`);
+          resolveCount(true);
+        });
+    });
 
-    // Cancella tutti i libri esistenti
-    prisma.book.deleteMany()
-      .then(() => {
-        addLog(`🗑️ Database svuotato con successo`);
+    // Ora inizia l'importazione effettiva
+    const importStream = require('fs').createReadStream(filePath);
+    const parser = parse({
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+      relaxColumnCount: true
+    });
 
-        // createReadStream(filePath)
-        //   .pipe(countParser)
-        //   .on('data', () => {
-        //     totalRows++;
-        //   })
-        //   .on('end', () => {
-        //     addLog(`📊 Trovate ${totalRows} righe da importare`);
+    let isStreamActive = true;
 
-        // Dopo aver contato le righe, inizia l'importazione
-        const parser = parse({
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-          relaxColumnCount: true
+    importStream
+      .pipe(parser)
+      .on('data', async (row: CsvRow) => {
+        // Salta le righe vuote
+        if (Object.values(row).every(value => !value)) {
+          await updateProgress();
+          return;
+        }
+
+        const operation = processRow(row).then(async () => {
+          if (isStreamActive) {
+            await updateProgress();
+          }
+        });
+        operations.push(operation);
+      })
+      .on('end', async () => {
+        try {
+          await Promise.all(operations);
+          isStreamActive = false;
+          
+          try {
+            await writer.write(
+              new TextEncoder().encode(
+                JSON.stringify({
+                  success: results.success,
+                  errors: results.errors,
+                  errorDetails: results.errorDetails
+                }) + "\n"
+              )
+            );
+          } catch (error) {
+            console.warn('Errore nell\'invio del risultato finale:', error);
+          }
+
+          addLog(`\n✨ Importazione completata: ${results.success} libri importati/aggiornati, ${results.errors} errori`);
+          resolve(results);
+        } catch (error) {
+          reject(error);
+        }
+      })
+      .on('error', (error: Error) => {
+        isStreamActive = false;
+        reject(error);
+      });
+
+    const processRow = async (row: CsvRow) => {
+      try {
+        const mappedData = await processCsvRow(row);
+        
+        // Cerca la copertina del libro
+        mappedData.coverUrl = await getBookCoverUrlFromBook(mappedData, addLog);
+        
+        // Cerca se esiste già un libro con lo stesso ISBN o titolo+autore
+        const existingBook = await prisma.book.findFirst({
+          where: {
+            OR: [
+              { isbn: mappedData.isbn },
+              {
+                AND: [
+                  { title: mappedData.title },
+                  { author: mappedData.author }
+                ]
+              }
+            ]
+          }
         });
 
-        // createReadStream(filePath)
-        //   .pipe(parser)
-        //   .on('data', (row: CsvRow) => {
-        //     // Salta le righe vuote
-        //     if (Object.values(row).every(value => !value)) {
-        //       processedRows++;
-        //       onProgress?.(processedRows, totalRows);
-        //       return;
-        //     }
-
-        //     const operation = (async () => {
-        //       try {
-        //         const mappedData = await mapCsvToDbFields(row);
-                
-        //         // Cerca la copertina del libro
-        //         mappedData.coverUrl = await getBookCoverUrlFromBook(mappedData, addLog);
-                
-        //         await prisma.book.create({
-        //           data: mappedData
-        //         });
-        //         results.success++;
-        //         addLog(`✅ Libro importato: "${mappedData.title}"`);
-        //       } catch (error) {
-        //         results.errors++;
-        //         const errorMessage = `❌ Errore riga ${results.success + results.errors}: ${(error as Error).message}`;
-        //         results.errorDetails.push(errorMessage);
-        //         addLog(errorMessage);
-        //       } finally {
-        //         processedRows++;
-        //         onProgress?.(processedRows, totalRows);
-        //       }
-        //     })();
-
-        //     operations.push(operation);
-        //   })
-        //   .on('error', (error) => {
-        //     addLog(`❌ Errore durante il parsing del CSV: ${error.message}`);
-        //     reject(error);
-        //   })
-        //   .on('end', async () => {
-        //     try {
-        //       await Promise.all(operations);
-        //       addLog(`\n📊 Riepilogo importazione:`);
-        //       addLog(`✅ Libri importati con successo: ${results.success}`);
-        //       if (results.errors > 0) {
-        //         addLog(`❌ Errori: ${results.errors}`);
-        //       }
-        //       resolve(results);
-        //     } catch (error) {
-        //       addLog(`❌ Errore durante l'importazione: ${error}`);
-        //       reject(error);
-        //     }
-        //   });
-      });
+        if (existingBook) {
+          // Aggiorna il libro esistente
+          await prisma.book.update({
+            where: { id: existingBook.id },
+            data: mappedData
+          });
+          addLog(`🔄 Libro aggiornato: "${mappedData.title}"`);
+        } else {
+          // Crea un nuovo libro
+          await prisma.book.create({
+            data: mappedData
+          });
+          addLog(`✅ Nuovo libro importato: "${mappedData.title}"`);
+        }
+        
+        results.success++;
+      } catch (error) {
+        results.errors++;
+        const errorMessage = `❌ Errore riga ${results.success + results.errors}: ${(error as Error).message}`;
+        results.errorDetails.push(errorMessage);
+        addLog(errorMessage);
+      } finally {
+        processedRows++;
+      }
+    };
   });
 }
 
@@ -517,9 +601,9 @@ export async function exportBooksToCsv(
 export async function parseCSVToBooks(
   csvContent: string,
   onProgress?: (current: number, total: number) => void
-): Promise<{ books: Book[]; errors: string[] }> {
+): Promise<{ books: Partial<Book>[]; errors: string[] }> {
   const CHUNK_SIZE = 100; // Numero di righe da processare per chunk
-  const books: Book[] = [];
+  const books: Partial<Book>[] = [];
   const errors: string[] = [];
   
   return new Promise((resolve, reject) => {
@@ -566,7 +650,7 @@ export async function parseCSVToBooks(
       const processedBooks = await Promise.all(
         chunk.map(async (row) => {
           try {
-            const book = await mapCsvToDbFields(row);
+            const book = await processCsvRow(row);
             rowCount++;
             if (onProgress) {
               onProgress(rowCount, totalRows);
@@ -579,7 +663,7 @@ export async function parseCSVToBooks(
         })
       );
 
-      books.push(...processedBooks.filter((book): book is Book => book !== null));
+      books.push(...processedBooks.filter((book): book is Partial<Book> => book !== null));
     }
   });
 }
