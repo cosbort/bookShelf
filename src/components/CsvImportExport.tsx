@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import { ImportProgress, ExportProgress } from '@/types/progress';
 import { importBooksFromCsv, exportBooksToCsv } from '@/utils/bookCsvUtils';
 import { useBooks } from '@/hooks/useBooks';
+import { Download, Upload } from 'lucide-react';
+import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
 interface CsvImportExportProps {
   onComplete?: () => void;
@@ -28,20 +30,30 @@ export function CsvImportExport({ onComplete }: CsvImportExportProps) {
 
       await mutate();
       
-      toast.success(
-        `Importazione completata: ${result.success} libri importati, ${result.errors} errori`
-      );
-
       if (result.errors > 0) {
-        console.error('Errori durante l\'importazione:', result.errorDetails);
+        toast.error(`Importazione completata con errori: ${result.errors} errori su ${result.success + result.errors} libri`);
+        console.error('Dettagli errori:', result.errorDetails);
+        
+        // Mostra i primi 3 errori in un toast separato
+        if (result.errorDetails?.length > 0) {
+          toast.error(
+            result.errorDetails.slice(0, 3).join('\n') + 
+            (result.errorDetails.length > 3 ? `\n...e altri ${result.errorDetails.length - 3} errori` : '')
+          );
+        }
+      } else {
+        toast.success(`Importazione completata: ${result.success} libri importati con successo`);
       }
       
       onComplete?.();
     } catch (error) {
+      console.error('Errore durante l\'importazione:', error);
       toast.error(`Errore durante l'importazione: ${error.message}`);
     } finally {
       setImporting(false);
       setProgress(null);
+      // Reset input value per permettere di importare lo stesso file
+      event.target.value = '';
     }
   };
 
@@ -52,11 +64,10 @@ export function CsvImportExport({ onComplete }: CsvImportExportProps) {
         setProgress(progress);
       });
 
-      // Creare un link per il download
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'books_export.csv';
+      a.download = `books_export_${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -65,6 +76,7 @@ export function CsvImportExport({ onComplete }: CsvImportExportProps) {
       toast.success('Esportazione completata con successo');
       onComplete?.();
     } catch (error) {
+      console.error('Errore durante l\'esportazione:', error);
       toast.error(`Errore durante l'esportazione: ${error.message}`);
     } finally {
       setExporting(false);
@@ -73,49 +85,49 @@ export function CsvImportExport({ onComplete }: CsvImportExportProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex space-x-4">
-        <Button
-          variant="outline"
-          onClick={() => document.getElementById('csvInput')?.click()}
-          disabled={importing}
-        >
-          {importing ? 'Importazione in corso...' : 'Importa CSV'}
-        </Button>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+      <div className="relative inline-block">
         <input
           id="csvInput"
           type="file"
           accept=".csv"
           onChange={handleImport}
-          className="hidden"
+          className="absolute inset-0 w-full h-full cursor-pointer opacity-0 z-10"
+          disabled={importing || exporting}
         />
         <Button
           variant="outline"
-          onClick={handleExport}
-          disabled={exporting}
+          className="w-full sm:w-auto button-hover"
+          disabled={importing || exporting}
         >
-          {exporting ? 'Esportazione in corso...' : 'Esporta CSV'}
+          <Upload className="mr-2 h-4 w-4" />
+          {importing ? 'Importazione...' : 'Importa CSV'}
         </Button>
       </div>
 
+      <Button
+        variant="outline"
+        className="w-full sm:w-auto button-hover"
+        onClick={handleExport}
+        disabled={importing || exporting}
+      >
+        <Download className="mr-2 h-4 w-4" />
+        {exporting ? 'Esportazione...' : 'Esporta CSV'}
+      </Button>
+
       {progress && (
-        <div className="space-y-2">
-          <Progress value={
-            progress.status !== 'error'
-              ? (progress.currentBook / progress.totalBooks) * 100
-              : undefined
-          } />
-          <p className="text-sm text-gray-500">
-            {(progress.status === 'importing' || progress.status === 'exporting')
-              ? `Elaborazione in corso... ${progress.currentBook} ${
-                  progress.totalBooks > 0
-                    ? `di ${progress.totalBooks}`
-                    : ''
-                }`
-              : progress.status}
-          </p>
+        <div className="flex w-full items-center gap-2">
+          <Progress value={progress.percentage} className="w-full" />
+          <span className="text-sm text-muted-foreground">
+            {progress.percentage}%
+          </span>
         </div>
       )}
+
+      <LoadingOverlay
+        isLoading={exporting && !progress}
+        text="Esportazione in corso..."
+      />
     </div>
   );
 }

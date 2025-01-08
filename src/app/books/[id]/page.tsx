@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useBook } from '@/hooks/useBook';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Book as BookIcon, Calendar, Hash, Info, MapPin, Star, Type, User } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/utils/dateFormat';
+import Image from 'next/image';
+import { Badge } from '@/components/ui/badge';
 
 export default function BookDetailPage() {
   const params = useParams();
@@ -57,7 +59,7 @@ export default function BookDetailPage() {
           <Skeleton className="h-10 w-32 mr-4" />
           <Skeleton className="h-10 w-48" />
         </div>
-        <Card className="max-w-2xl mb-8">
+        <Card className="max-w-4xl mb-8">
           <CardHeader>
             <Skeleton className="h-8 w-64" />
           </CardHeader>
@@ -71,6 +73,14 @@ export default function BookDetailPage() {
     );
   }
 
+  const statusColors = {
+    'To Read': 'bg-yellow-200 text-yellow-800',
+    'Reading': 'bg-blue-200 text-blue-800',
+    'Read': 'bg-green-200 text-green-800',
+    'Completed': 'bg-purple-200 text-purple-800',
+    'Dropped': 'bg-red-200 text-red-800',
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center mb-8">
@@ -80,43 +90,163 @@ export default function BookDetailPage() {
         <h1 className="text-4xl font-bold">Dettagli Libro</h1>
       </div>
 
-      <Card className="max-w-2xl mb-8">
-        <CardHeader>
-          <CardTitle>{book.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-semibold text-lg">Autore</h3>
-            <p>{book.author}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold text-lg">Genere</h3>
-            <p>{book.genre}</p>
-          </div>
-          <div>
-            <h3 className="font-semibold text-lg">Stato</h3>
-            <p>{book.status}</p>
-          </div>
-          {book.publishedDate && (
-            <div>
-              <h3 className="font-semibold text-lg">Data di Pubblicazione</h3>
-              <p>{formatDate(book.publishedDate)}</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        {/* Copertina del libro */}
+        <Card className="md:col-span-1">
+          <CardContent className="pt-6">
+            {book.coverUrl ? (
+              <div className="relative aspect-[2/3] rounded-lg overflow-hidden">
+                <Image
+                  src={book.coverUrl}
+                  alt={`Copertina di ${book.title}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                />
+              </div>
+            ) : (
+              <div className="aspect-[2/3] bg-muted rounded-lg flex items-center justify-center">
+                <BookIcon className="h-20 w-20 text-muted-foreground" />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Informazioni principali */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <div className="flex flex-col space-y-2">
+              <CardTitle className="text-3xl">{book.title}</CardTitle>
+              {book.originalTitle && (
+                <p className="text-lg text-muted-foreground">
+                  Titolo originale: {book.originalTitle}
+                </p>
+              )}
+              {book.subtitle && (
+                <p className="text-lg text-muted-foreground">
+                  {book.subtitle}
+                </p>
+              )}
             </div>
-          )}
-          {book.isbn && (
-            <div>
-              <h3 className="font-semibold text-lg">ISBN</h3>
-              <p>{book.isbn}</p>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <div className="flex items-start space-x-3">
+                <User className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                <div>
+                  <h3 className="font-semibold">Autore</h3>
+                  <p>{book.authorLastFirst || book.author}</p>
+                  {book.translator && (
+                    <p className="text-sm text-muted-foreground">
+                      Tradotto da: {book.translator}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <Type className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                <div>
+                  <h3 className="font-semibold">Genere</h3>
+                  <p>{book.genre || 'Non specificato'}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <Info className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                <div>
+                  <h3 className="font-semibold">Stato</h3>
+                  <Badge className={statusColors[book.status] || 'bg-gray-200'}>
+                    {book.status}
+                  </Badge>
+                  {book.currentPage && book.pageCount && (
+                    <p className="text-sm mt-1">
+                      Pagina {book.currentPage} di {book.pageCount}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-          {book.description && (
-            <div>
-              <h3 className="font-semibold text-lg">Descrizione</h3>
-              <p className="text-muted-foreground">{book.description}</p>
+
+            <div className="space-y-6">
+              <div className="flex items-start space-x-3">
+                <Calendar className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                <div>
+                  <h3 className="font-semibold">Date</h3>
+                  {book.publishedDate && (
+                    <p>Pubblicato: {formatDate(book.publishedDate)}</p>
+                  )}
+                  {book.dateStarted && (
+                    <p>Iniziato: {formatDate(book.dateStarted.toString())}</p>
+                  )}
+                  {book.dateFinished && (
+                    <p>Finito: {formatDate(book.dateFinished.toString())}</p>
+                  )}
+                </div>
+              </div>
+
+              {book.isbn && (
+                <div className="flex items-start space-x-3">
+                  <Hash className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <h3 className="font-semibold">ISBN</h3>
+                    <p>{book.isbn}</p>
+                  </div>
+                </div>
+              )}
+
+              {(book.rating || book.location) && (
+                <div className="flex items-start space-x-3">
+                  {book.rating ? (
+                    <>
+                      <Star className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                      <div>
+                        <h3 className="font-semibold">Valutazione</h3>
+                        <p>{book.rating}/5</p>
+                      </div>
+                    </>
+                  ) : book.location && (
+                    <>
+                      <MapPin className="h-5 w-5 mt-0.5 text-muted-foreground" />
+                      <div>
+                        <h3 className="font-semibold">Posizione</h3>
+                        <p>{book.location}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Descrizione e Note */}
+      {(book.description || book.notes) && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Dettagli Aggiuntivi</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {book.description && (
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Descrizione</h3>
+                <p className="text-muted-foreground whitespace-pre-line">
+                  {book.description}
+                </p>
+              </div>
+            )}
+            {book.notes && (
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Note Personali</h3>
+                <p className="text-muted-foreground whitespace-pre-line">
+                  {book.notes}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex space-x-4">
         <Link href={`/books/${book.id}/edit`}>

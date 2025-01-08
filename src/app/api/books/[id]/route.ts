@@ -50,6 +50,16 @@ export async function PUT(request: Request, { params }: RouteParams) {
         publishedDate: data.publishedDate,
         publisher: data.publisher,
         pageCount: data.pageCount,
+        location: data.location,
+        wishList: data.wishList,
+        previouslyOwned: data.previouslyOwned,
+        upNext: data.upNext,
+        language: data.language,
+        notes: data.notes,
+        rating: data.rating,
+        dateStarted: data.dateStarted,
+        dateFinished: data.dateFinished,
+        currentPage: data.currentPage,
       },
     });
     return NextResponse.json(book);
