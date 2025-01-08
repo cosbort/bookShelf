@@ -16,6 +16,16 @@
       "static/chunks/main-app.js",
       "static/chunks/app/books/page.js"
     ],
+    "/books/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/books/[id]/page.js"
+    ],
+    "/books/[id]/edit/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/books/[id]/edit/page.js"
+    ],
     "/books/new/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",

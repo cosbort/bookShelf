@@ -631,6 +631,9 @@ video {
 .z-\[100\] {
   z-index: 100;
 }
+.z-10 {
+  z-index: 10;
+}
 .-mx-1 {
   margin-left: -0.25rem;
   margin-right: -0.25rem;
@@ -696,6 +699,9 @@ video {
 }
 .block {
   display: block;
+}
+.inline-block {
+  display: inline-block;
 }
 .flex {
   display: flex;

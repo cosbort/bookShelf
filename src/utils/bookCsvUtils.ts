@@ -246,7 +246,7 @@ async function getGoogleBooksCover(book: Partial<Book>): Promise<string | null> 
       : `intitle:${book.title}${book.author ? ` inauthor:${book.author}` : ''}`;
 
     const response = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${env.GOOGLE_BOOKS_API_KEY}`
+      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${GOOGLE_BOOKS_API_KEY}`
     );
     
     const data = await response.json();
@@ -606,7 +606,7 @@ export async function exportBooksToCsv(
       console.log(`📋 Inizio esportazione di ${totalBooks} libri...`);
 
       const books = await prisma.book.findMany();
-      // const writeStream = createWriteStream(filePath);
+      const writeStream = require('fs').createWriteStream(filePath);
       
       const stringifier = stringify({
         header: true,
@@ -659,17 +659,17 @@ export async function exportBooksToCsv(
 
       stringifier.end();
       
-      // writeStream.on('finish', () => {
-      //   console.log(`✅ Esportazione completata con successo! ${books.length} libri esportati in ${filePath}`);
-      //   resolve(books.length);
-      // });
+      writeStream.on('finish', () => {
+        console.log(`✅ Esportazione completata con successo! ${books.length} libri esportati in ${filePath}`);
+        resolve(books.length);
+      });
 
-      // writeStream.on('error', (error) => {
-      //   console.error('❌ Errore durante la scrittura del file:', error);
-      //   reject(error);
-      // });
+      writeStream.on('error', (error: Error) => {
+        console.error('❌ Errore durante la scrittura del file:', error);
+        reject(error);
+      });
 
-      // stringifier.pipe(writeStream);
+      stringifier.pipe(writeStream);
     } catch (error) {
       console.error('❌ Errore durante l\'esportazione:', error);
       reject(error);
@@ -750,7 +750,7 @@ export async function parseCSVToBooks(
   });
 }
 
-/**
+/*
  * Funzione per gestire l'esportazione CSV nel browser
  */
 export async function convertBooksToCSV(books: any[]): Promise<string> {

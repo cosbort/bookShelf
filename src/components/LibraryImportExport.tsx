@@ -144,17 +144,17 @@ export function LibraryImportExport({ onImport, onExport }: ImportExportProps) {
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      <div className="relative">
+      <div className="relative inline-block">
         <input
           type="file"
           accept=".csv"
           onChange={handleImport}
-          className="absolute inset-0 cursor-pointer opacity-0"
+          className="absolute inset-0 w-full h-full cursor-pointer opacity-0 z-10"
           disabled={isImporting || isExporting}
         />
         <Button
           variant="outline"
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto button-hover"
           disabled={isImporting || isExporting}
         >
           <Upload className="mr-2 h-4 w-4" />
@@ -164,7 +164,7 @@ export function LibraryImportExport({ onImport, onExport }: ImportExportProps) {
 
       <Button
         variant="outline"
-        className="w-full sm:w-auto"
+        className="w-full sm:w-auto button-hover"
         onClick={handleExport}
         disabled={isImporting || isExporting}
       >
