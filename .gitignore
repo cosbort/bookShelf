@@ -12,9 +12,21 @@ venv/
 # IDE
 .vscode/
 .idea/
+node_modules
+
+# Next.js
+# Next.js build output
 .next/
+.next/*
+out/
+build/
+dist/
+.vercel/
+
+# Next.js cache
+.next/cache/
+**/.next/cache/
 
 # Uploaded files
 static/covers/*
 !static/covers/.gitkeep
-node_modules
