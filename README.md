@@ -12,10 +12,10 @@ Un'applicazione web moderna per catalogare e gestire la tua collezione di libri 
 - Completamente in italiano
 
 ## Tech Stack
-- React 18
-- TypeScript
-- Next.js 14
-- Tailwind CSS
+- React 19.0.0
+- TypeScript 5.7.2
+- Next.js 15.2.0
+- Tailwind CSS 4.0.9
 - Shadcn UI
 - Radix UI
 - Express.js
@@ -101,6 +101,11 @@ Prefissi per i commit:
 - "refactor:" per refactoring del codice
 - "test:" per aggiunta di test
 - "chore:" per task di manutenzione
+
+## Modifiche Recenti
+- **Marzo 2025**: Aggiornamento a Tailwind CSS v4 e correzione delle classi di spaziatura
+- **Marzo 2025**: Aggiornamento delle dipendenze (React 19.0.0, Next.js 15.2.0, TypeScript 5.7.2)
+- **Marzo 2025**: Migrazione a pnpm come gestore di pacchetti
 
 ## Licenza
 GNU General Public License v3.0 - vedi il file [LICENSE](LICENSE) per i dettagli.
