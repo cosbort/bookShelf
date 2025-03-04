@@ -14,7 +14,6 @@ export async function GET() {
     const locationCount = await prisma.book.count({
       where: {
         location: {
-          not: null,
           not: '',
         },
       },
@@ -74,6 +73,8 @@ export async function POST(request: Request) {
         status: data.status,
         isbn: data.isbn || '',
         coverUrl: data.coverUrl,
+        coverWidth: data.coverWidth ? parseInt(data.coverWidth) : null,
+        coverHeight: data.coverHeight ? parseInt(data.coverHeight) : null,
         description: data.description,
         publishedDate: data.publishedDate,
         publisher: data.publisher,

@@ -30,7 +30,9 @@ const CSV_MAPPING = {
   'Previously Owned': 'previouslyOwned',
   'Up Next': 'upNext',
   'ISBN': 'isbn',
-  'Cover URL': 'coverUrl'
+  'Cover URL': 'coverUrl',
+  'Cover Width': 'coverWidth',
+  'Cover Height': 'coverHeight'
 };
 
 interface CsvRow {
@@ -62,8 +64,15 @@ const MAX_RETRIES = 2;
 const MAX_CONCURRENT_REQUESTS = 15;
 const GOOGLE_BOOKS_API_KEY = env.googleBooksApiKey;
 
+// Dimensioni standard delle copertine di OpenLibrary
+const COVER_SIZES = {
+  S: { width: 180, height: 270 },   // Small
+  M: { width: 360, height: 540 },   // Medium
+  L: { width: 720, height: 1080 },  // Large
+} as const;
+
 // Cache in memoria per la sessione corrente
-const coverCache = new Map<string, string | null>();
+const coverCache = new Map<string, { url: string | null; width?: number; height?: number }>();
 
 class BatchProcessor {
   private queue: (() => Promise<void>)[] = [];
@@ -93,18 +102,11 @@ class BatchProcessor {
 
 const batchProcessor = new BatchProcessor(MAX_CONCURRENT_REQUESTS);
 
-/**
- * Esegue una richiesta fetch con un timeout specificato
- * @param url - URL della richiesta
- * @param options - Opzioni della richiesta, incluso il timeout
- * @returns Promise<Response>
- */
 async function fetchWithTimeout(
   url: string, 
   options: { timeout?: number } = {}
 ): Promise<Response> {
   const { timeout = API_TIMEOUT } = options;
-  
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   
@@ -121,11 +123,6 @@ async function fetchWithTimeout(
   }
 }
 
-/**
- * Crea un delay promessa che si risolve dopo il tempo specificato
- * @param ms - Millisecondi da attendere
- * @returns Promise che si risolve dopo il delay
- */
 function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -139,15 +136,15 @@ async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Respo
       if (response.ok) return response;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
-      if (i < retries - 1) await delay(Math.min(1000 * Math.pow(2, i), 3000)); // exponential backoff
+      if (i < retries - 1) await delay(Math.min(1000 * Math.pow(2, i), 3000));
     }
   }
   
   throw lastError || new Error('Failed after retries');
 }
 
-async function searchGoogleBooks(query: string): Promise<string | null> {
-  if (!GOOGLE_BOOKS_API_KEY) return null;
+async function searchGoogleBooks(query: string): Promise<{ url: string | null; width?: number; height?: number }> {
+  if (!GOOGLE_BOOKS_API_KEY) return { url: null };
   
   try {
     const encodedQuery = encodeURIComponent(query);
@@ -158,19 +155,25 @@ async function searchGoogleBooks(query: string): Promise<string | null> {
     const data = await response.json();
     const imageLinks = data.items?.[0]?.volumeInfo?.imageLinks;
     
-    // Preferisci immagini di qualità più alta quando disponibili
-    return imageLinks?.thumbnail?.replace('zoom=1', 'zoom=2') || 
-           imageLinks?.thumbnail ||
-           null;
+    if (imageLinks?.thumbnail) {
+      // Google Books usa una dimensione standard di 128x192 per le thumbnail
+      return {
+        url: imageLinks.thumbnail.replace('zoom=1', 'zoom=2'),
+        width: 128,
+        height: 192
+      };
+    }
+    
+    return { url: null };
   } catch (error) {
     if (error instanceof Error) {
       console.warn('Errore Google Books:', error.message);
     }
-    return null;
+    return { url: null };
   }
 }
 
-async function searchOpenLibrary(query: { title: string; author?: string; isbn?: string }): Promise<string | null> {
+async function searchOpenLibrary(query: { title: string; author?: string; isbn?: string }): Promise<{ url: string | null; width?: number; height?: number }> {
   try {
     // Prima prova con l'ISBN se disponibile
     if (query.isbn) {
@@ -179,8 +182,18 @@ async function searchOpenLibrary(query: { title: string; author?: string; isbn?:
       );
       const data = await response.json();
       const bookData = data[`ISBN:${query.isbn}`];
-      if (bookData?.cover?.medium) {
-        return bookData.cover.medium;
+      if (bookData?.cover?.large) {
+        return {
+          url: bookData.cover.large,
+          width: COVER_SIZES.L.width,
+          height: COVER_SIZES.L.height
+        };
+      } else if (bookData?.cover?.medium) {
+        return {
+          url: bookData.cover.medium,
+          width: COVER_SIZES.M.width,
+          height: COVER_SIZES.M.height
+        };
       }
     }
 
@@ -193,22 +206,23 @@ async function searchOpenLibrary(query: { title: string; author?: string; isbn?:
     const data = await response.json();
     if (data.docs?.[0]?.cover_i) {
       const coverId = data.docs[0].cover_i;
-      return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
+      return {
+        url: `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`,
+        width: COVER_SIZES.L.width,
+        height: COVER_SIZES.L.height
+      };
     }
 
-    return null;
+    return { url: null };
   } catch (error) {
     if (error instanceof Error) {
       console.warn('Errore OpenLibrary:', error.message);
     }
-    return null;
+    return { url: null };
   }
 }
 
-/**
- * Ottiene l'URL della copertina del libro usando l'API di Google Books
- */
-async function getBookCoverUrl(isbn: string | null, title: string, author: string): Promise<string | null> {
+async function getBookCoverUrl(isbn: string | null, title: string, author: string): Promise<{ url: string | null; width?: number; height?: number }> {
   const book = { 
     title, 
     author: author || undefined,
@@ -220,178 +234,133 @@ async function getBookCoverUrl(isbn: string | null, title: string, author: strin
 export async function getBookCoverUrlFromBook(
   book: Partial<Book>,
   logger?: (message: string) => void
-): Promise<string | null> {
+): Promise<{ url: string | null; width?: number; height?: number }> {
   try {
     // Prima prova con Google Books
     const googleCover = await getGoogleBooksCover(book);
-    if (googleCover) return googleCover;
+    if (googleCover.url) return googleCover;
 
     // Se non trova nulla, prova con OpenLibrary
     const openLibraryCover = await getOpenLibraryCover(book);
-    return openLibraryCover || null;
+    return openLibraryCover;
   } catch (error) {
     if (error instanceof Error) {
       console.error('Errore nel recupero della copertina:', error.message);
     }
-    return null;
+    return { url: null };
   }
 }
 
-async function getGoogleBooksCover(book: Partial<Book>): Promise<string | null> {
-  if (!hasGoogleBooksApiKey) return null;
+async function getGoogleBooksCover(book: Partial<Book>): Promise<{ url: string | null; width?: number; height?: number }> {
+  if (!book.title) return { url: null };
 
-  try {
-    const query = book.isbn 
-      ? `isbn:${book.isbn}`
-      : `intitle:${book.title}${book.author ? ` inauthor:${book.author}` : ''}`;
-
-    const response = await fetch(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${GOOGLE_BOOKS_API_KEY}`
-    );
-    
-    const data = await response.json();
-
-    // Se abbiamo superato la quota, lanciamo un errore specifico
-    if (data.error?.code === 429) {
-      throw new Error('RATE_LIMIT_EXCEEDED');
-    }
-
-    if (!data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail) {
-      return null;
-    }
-
-    // Converti l'URL da http a https se necessario
-    const coverUrl = data.items[0].volumeInfo.imageLinks.thumbnail.replace('http://', 'https://');
-    return coverUrl;
-  } catch (error) {
-    if (error instanceof Error && error.message === 'RATE_LIMIT_EXCEEDED') {
-      console.warn('Google Books API quota exceeded, falling back to OpenLibrary');
-      return getOpenLibraryCover(book);
-    }
-    console.error('Error fetching Google Books cover:', error);
-    return null;
+  const cacheKey = `google:${book.isbn || ''}:${book.title}`;
+  if (coverCache.has(cacheKey)) {
+    return coverCache.get(cacheKey)!;
   }
+
+  let query = book.isbn ? `isbn:${book.isbn}` : book.title;
+  if (!book.isbn && book.author) {
+    query += ` inauthor:${book.author}`;
+  }
+
+  const result = await searchGoogleBooks(query);
+  coverCache.set(cacheKey, result);
+  return result;
 }
 
-async function getOpenLibraryCover(book: Partial<Book>): Promise<string | null> {
-  try {
-    // Prima prova con l'ISBN se disponibile
-    if (book.isbn) {
-      const response = await fetch(
-        `https://openlibrary.org/api/books?bibkeys=ISBN:${book.isbn}&format=json&jscmd=data`
-      );
-      const data = await response.json();
-      const bookData = data[`ISBN:${book.isbn}`];
-      if (bookData?.cover?.medium) {
-        return bookData.cover.medium;
-      }
-    }
+async function getOpenLibraryCover(book: Partial<Book>): Promise<{ url: string | null; width?: number; height?: number }> {
+  if (!book.title) return { url: null };
 
-    // Se non trova con l'ISBN, prova con titolo e autore
-    const searchQuery = encodeURIComponent(`${book.title}${book.author ? ` ${book.author}` : ''}`);
-    const response = await fetch(
-      `https://openlibrary.org/search.json?q=${searchQuery}&limit=1`
-    );
-    
-    const data = await response.json();
-    if (data.docs?.[0]?.cover_i) {
-      const coverId = data.docs[0].cover_i;
-      return `https://covers.openlibrary.org/b/id/${coverId}-M.jpg`;
-    }
-
-    return null;
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error('OpenLibrary API error:', error.message);
-    }
-    return null;
+  const cacheKey = `openlib:${book.isbn || ''}:${book.title}`;
+  if (coverCache.has(cacheKey)) {
+    return coverCache.get(cacheKey)!;
   }
+
+  const result = await searchOpenLibrary({
+    title: book.title,
+    author: book.author,
+    isbn: book.isbn
+  });
+
+  coverCache.set(cacheKey, result);
+  return result;
 }
 
-/**
- * Verifica se l'immagine è accessibile
- */
 async function isImageAccessible(url: string): Promise<boolean> {
   try {
     const response = await fetchWithTimeout(url, { timeout: 5000 });
-    const contentType = response.headers.get('content-type');
-    return response.ok && Boolean(contentType?.startsWith('image/'));
-  } catch (error) {
-    console.error('Error checking image accessibility:', error);
+    return response.ok && response.headers.get('content-type')?.startsWith('image/');
+  } catch {
     return false;
   }
 }
 
-async function getCoverUrl(isbn: string | undefined, title: string, author: string, csvCoverUrl: string | undefined): Promise<string | undefined> {
-  // Se c'è un URL nel CSV e sembra valido, verifica che l'immagine sia accessibile
-  if (csvCoverUrl?.trim() && (csvCoverUrl.startsWith('http://') || csvCoverUrl.startsWith('https://'))) {
-    const url = csvCoverUrl.trim();
-    if (await isImageAccessible(url)) {
-      return url;
+async function getCoverUrl(isbn: string | undefined, title: string, author: string, csvCoverUrl: string | undefined): Promise<{ url: string | undefined; width?: number; height?: number }> {
+  // Se c'è un URL nella riga CSV e l'immagine è accessibile, usalo
+  if (csvCoverUrl) {
+    const isAccessible = await isImageAccessible(csvCoverUrl);
+    if (isAccessible) {
+      return { url: csvCoverUrl };
     }
-    console.warn(`Image not accessible at ${url}, falling back to OpenLibrary`);
   }
 
-  // Altrimenti cerca su OpenLibrary
-  if (!isbn && !title) return undefined;
-
-  try {
-    let query = isbn ? `isbn:${isbn}` : `title:${title}${author ? ` author:${author}` : ''}`;
-    const response = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&fields=cover_i`);
-    const data = await response.json();
-
-    if (data.docs && data.docs[0] && data.docs[0].cover_i) {
-      const openLibraryUrl = `https://covers.openlibrary.org/b/id/${data.docs[0].cover_i}-L.jpg`;
-      if (await isImageAccessible(openLibraryUrl)) {
-        return openLibraryUrl;
-      }
-      console.warn(`Image not accessible at ${openLibraryUrl}`);
-    }
-  } catch (error) {
-    console.error('Error fetching cover:', error);
-  }
-  return undefined;
+  // Altrimenti cerca la copertina usando le API
+  const result = await getBookCoverUrl(isbn || null, title, author);
+  return { 
+    url: result.url || undefined,
+    width: result.width,
+    height: result.height
+  };
 }
 
 async function processCsvRow(row: Record<string, string>): Promise<Partial<Book>> {
-  const isbn = row['ISBN']?.trim();
-  const title = row['Title']?.trim() || '';
-  const author = row['Author']?.trim() || '';
-  const csvCoverUrl = row['Cover URL']?.trim();
-  
-  const coverUrl = await getCoverUrl(isbn, title, author, csvCoverUrl);
+  const mappedData: Partial<Book> = {};
 
-  return {
-    id: crypto.randomUUID(),
-    title,
-    originalTitle: row['Original Title']?.trim(),
-    subtitle: row['Subtitle']?.trim(),
-    author,
-    authorLastFirst: row['Author (Last, First)']?.trim(),
-    translator: row['Translator']?.trim(),
-    publisher: row['Publisher']?.trim(),
-    publishedDate: row['Date Published']?.trim(),
-    yearPublished: row['Year Published'] ? parseInt(row['Year Published'].trim(), 10) : undefined,
-    genre: row['Genre']?.trim(),
-    description: row['Summary']?.trim(),
-    language: row['Language']?.trim() || 'Italiano',
-    pageCount: row['Number of Pages'] ? parseInt(row['Number of Pages'].trim(), 10) : undefined,
-    rating: row['Rating'] ? parseFloat(row['Rating'].trim()) : undefined,
-    location: row['Physical Location']?.trim(),
-    status: (row['Status']?.trim() as ReadingStatus) || 'To Read',
-    dateStarted: row['Date Started'] ? new Date(row['Date Started'].trim()) : undefined,
-    dateFinished: row['Date Finished'] ? new Date(row['Date Finished'].trim()) : undefined,
-    currentPage: row['Current Page'] ? parseInt(row['Current Page'].trim(), 10) : undefined,
-    notes: row['Notes']?.trim(),
-    category: row['Category']?.trim(),
-    wishList: stringToBoolean(row['Wish List']?.trim()),
-    previouslyOwned: stringToBoolean(row['Previously Owned']?.trim()),
-    upNext: stringToBoolean(row['Up Next']?.trim()),
-    isbn,
-    coverUrl,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+  for (const [csvKey, value] of Object.entries(row)) {
+    const bookKey = CSV_MAPPING[csvKey as keyof typeof CSV_MAPPING];
+    if (!bookKey || !value) continue;
+
+    switch (bookKey) {
+      case 'wishList':
+      case 'previouslyOwned':
+      case 'upNext':
+        mappedData[bookKey] = stringToBoolean(value);
+        break;
+      case 'dateStarted':
+      case 'dateFinished':
+        mappedData[bookKey] = parseDate(value);
+        break;
+      case 'pageCount':
+      case 'yearPublished':
+      case 'currentPage':
+      case 'coverWidth':
+      case 'coverHeight':
+        mappedData[bookKey] = parseNumber(value);
+        break;
+      case 'rating':
+        mappedData[bookKey] = parseNumber(value);
+        break;
+      default:
+        mappedData[bookKey as keyof Book] = value as any;
+    }
+  }
+
+  // Cerca la copertina del libro
+  const coverInfo = await getCoverUrl(
+    mappedData.isbn,
+    mappedData.title || '',
+    mappedData.author || '',
+    mappedData.coverUrl
+  );
+
+  if (coverInfo.url) {
+    mappedData.coverUrl = coverInfo.url;
+    mappedData.coverWidth = coverInfo.width;
+    mappedData.coverHeight = coverInfo.height;
+  }
+
+  return mappedData;
 }
 
 /**
@@ -639,6 +608,8 @@ export async function exportBooksToCsv(
               case 'currentPage':
               case 'rating':
               case 'yearPublished':
+              case 'coverWidth':
+              case 'coverHeight':
                 row[csvField] = value.toString();
                 break;
               default:

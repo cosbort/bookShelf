@@ -25,20 +25,35 @@ interface BookFormProps {
   initialBook?: Book;
 }
 
-const CoverPreview = ({ url }: { url: string }) => (
-  <div className="relative aspect-[2/3] w-full overflow-hidden rounded-lg">
-    <Image
-      src={url}
-      alt="Copertina libro"
-      fill
-      className="object-cover"
-      onError={(e) => {
-        const target = e.target as HTMLImageElement;
-        target.src = "https://via.placeholder.com/300x450?text=No+Cover";
-      }}
-    />
-  </div>
-);
+interface CoverPreviewProps {
+  url: string;
+  width?: number;
+  height?: number;
+}
+
+function CoverPreview({ url, width, height }: CoverPreviewProps) {
+  const containerWidth = 200;
+  const containerHeight = height && width
+    ? Math.round((containerWidth / width) * height)
+    : 300;
+
+  return (
+    <div 
+      className="relative overflow-hidden rounded-lg shadow-custom"
+      style={{ width: containerWidth, height: containerHeight }}
+    >
+      <Image
+        src={url}
+        alt="Copertina del libro"
+        fill
+        className="object-cover"
+        sizes="200px"
+        priority={true}
+        unoptimized={url.includes('openlibrary.org') || url.includes('google')}
+      />
+    </div>
+  );
+}
 
 export function BookForm({ onSubmit, initialBook }: BookFormProps) {
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -68,7 +83,9 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
     previouslyOwned: initialBook?.previouslyOwned || false,
     upNext: initialBook?.upNext || false,
     createdAt: initialBook?.createdAt || new Date(),
-    updatedAt: initialBook?.updatedAt || new Date()
+    updatedAt: initialBook?.updatedAt || new Date(),
+    coverWidth: initialBook?.coverWidth,
+    coverHeight: initialBook?.coverHeight,
   });
   const [quotaError, setQuotaError] = useState(false);
 
@@ -123,7 +140,9 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
               pageCount: book.pageCount,
               isbn: book.isbn,
               coverUrl: book.coverUrl,
-              genre: book.genre
+              genre: book.genre,
+              coverWidth: book.coverWidth,
+              coverHeight: book.coverHeight,
             };
             setSearchResults([searchResult]);
           }
@@ -174,7 +193,9 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
       publisher: book.publisher || '',
       pageCount: book.pageCount || 0,
       genre: book.genre || prevData.genre || '',
-      status: prevData.status || 'To Read'
+      status: prevData.status || 'To Read',
+      coverWidth: book.coverWidth,
+      coverHeight: book.coverHeight,
     }));
 
     setIsDropdownOpen(false);
@@ -218,7 +239,7 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
           </div>
 
           {isDropdownOpen && searchResults.length > 0 && (
-            <div className="rounded-lg border bg-white/5 p-4 shadow-lg">
+            <div className="rounded-lg border bg-white/5 p-4 shadow-custom">
               <div className="space-y-4">
                 {searchResults.map((book) => (
                   <button
@@ -228,16 +249,23 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
                     onClick={() => handleSearchResultClick(book)}
                   >
                     {book.coverUrl && (
-                      <div className="relative h-24 w-16 flex-shrink-0 overflow-hidden rounded">
+                      <div 
+                        className="relative flex-shrink-0 overflow-hidden rounded"
+                        style={{
+                          width: 64,
+                          height: book.coverHeight && book.coverWidth
+                            ? Math.round((64 / book.coverWidth) * book.coverHeight)
+                            : 96
+                        }}
+                      >
                         <Image
                           src={book.coverUrl}
                           alt={book.title}
                           fill
                           className="object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = "https://via.placeholder.com/300x450?text=No+Cover";
-                          }}
+                          sizes="64px"
+                          priority={true}
+                          unoptimized={book.coverUrl.includes('openlibrary.org') || book.coverUrl.includes('google')}
                         />
                       </div>
                     )}
@@ -268,7 +296,11 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
           </CardHeader>
           <CardContent>
             {formData.coverUrl ? (
-              <CoverPreview url={formData.coverUrl} />
+              <CoverPreview 
+                url={formData.coverUrl} 
+                width={formData.coverWidth}
+                height={formData.coverHeight}
+              />
             ) : (
               <div className="aspect-[2/3] bg-muted rounded-lg flex items-center justify-center">
                 <BookIcon className="h-20 w-20 text-muted-foreground" />
@@ -282,6 +314,30 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
               placeholder="URL Copertina"
               className="mt-4"
             />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-200 mb-1">
+                  Larghezza copertina
+                </label>
+                <Input
+                  type="number"
+                  name="coverWidth"
+                  value={formData.coverWidth || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-200 mb-1">
+                  Altezza copertina
+                </label>
+                <Input
+                  type="number"
+                  name="coverHeight"
+                  value={formData.coverHeight || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 

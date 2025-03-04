@@ -26,6 +26,8 @@ model Book {
   genre           String?
   status          String
   coverUrl        String?
+  coverWidth      Int?      // Dimensione larghezza copertina
+  coverHeight     Int?      // Dimensione altezza copertina
   description     String?
   publishedDate   String?
   yearPublished   Int?      // Nuovo campo

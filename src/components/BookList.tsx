@@ -9,11 +9,11 @@ import { formatDate } from "@/utils/dateFormat";
 import { cn } from "@/lib/utils";
 
 const statusColors = {
-  'To Read': 'bg-blue-500/20 text-blue-500 border-blue-500/50',
-  'Reading': 'bg-yellow-500/20 text-yellow-500 border-yellow-500/50',
-  'Read': 'bg-green-500/20 text-green-500 border-green-500/50',
-  'Completed': 'bg-emerald-500/20 text-emerald-500 border-emerald-500/50',
-  'Dropped': 'bg-red-500/20 text-red-500 border-red-500/50',
+  'To Read': 'bg-[hsl(210,100%,85%)] text-[hsl(210,100%,20%)] border-[hsl(210,100%,50%)]',
+  'Reading': 'bg-[hsl(50,100%,85%)] text-[hsl(50,100%,20%)] border-[hsl(50,100%,50%)]',
+  'Read': 'bg-[hsl(142,70%,85%)] text-[hsl(142,70%,20%)] border-[hsl(142,70%,50%)]',
+  'Completed': 'bg-[hsl(160,70%,85%)] text-[hsl(160,70%,20%)] border-[hsl(160,70%,50%)]',
+  'Dropped': 'bg-[hsl(0,70%,85%)] text-[hsl(0,70%,20%)] border-[hsl(0,70%,50%)]',
 } as const;
 
 export function BookList() {
@@ -109,7 +109,14 @@ export function BookList() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Caricamento libri...</div>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-[hsl(var(--muted-foreground))] flex flex-col items-center"
+        >
+          <div className="w-16 h-16 border-4 border-t-[hsl(var(--primary))] border-[hsl(var(--muted))] rounded-full animate-spin mb-4"></div>
+          <span>Caricamento libri...</span>
+        </motion.div>
       </div>
     );
   }
@@ -117,7 +124,14 @@ export function BookList() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-red-400">Errore nel caricamento dei libri</div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[hsl(0,70%,50%)] flex flex-col items-center"
+        >
+          <span className="text-xl mb-2">⚠️</span>
+          <span>Errore nel caricamento dei libri</span>
+        </motion.div>
       </div>
     );
   }
@@ -125,7 +139,14 @@ export function BookList() {
   if (!books || books.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Nessun libro trovato</div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[hsl(var(--muted-foreground))] flex flex-col items-center"
+        >
+          <span className="text-xl mb-2">📚</span>
+          <span>Nessun libro trovato</span>
+        </motion.div>
       </div>
     );
   }
@@ -140,13 +161,13 @@ export function BookList() {
       <div className="flex flex-col gap-4">
         {/* Campo di ricerca */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
           <input
             type="text"
             placeholder="Cerca per titolo, autore, ISBN o posizione..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="h-10 w-full rounded-md border border-gray-700 bg-gray-800 pl-10 pr-4 text-sm text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="h-10 w-full rounded-[var(--radius)] border border-[hsl(var(--border))] bg-[hsl(var(--card))] pl-10 pr-4 text-sm text-[hsl(var(--foreground))] placeholder-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--ring))] shadow-3d"
           />
         </div>
 
@@ -158,18 +179,18 @@ export function BookList() {
             console.log('Nuovo stato:', !showOnlyWithLocation);
             setShowOnlyWithLocation(!showOnlyWithLocation);
           }}
-          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm ${
+          className={`flex items-center gap-2 px-3 py-2 rounded-[var(--radius)] text-sm ${
             showOnlyWithLocation 
-              ? 'bg-green-600 text-white' 
-              : 'bg-gray-700 text-white hover:bg-gray-600'
-          } transition-colors`}
+              ? 'bg-[hsl(142,70%,35%)] text-white shadow-3d' 
+              : 'bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] hover:bg-[hsl(var(--secondary))/80] shadow-3d'
+          } transition-all`}
         >
           <MapPin className="h-4 w-4" />
           {showOnlyWithLocation ? 'Mostra tutti i libri' : 'Mostra solo libri con posizione'}
         </button>
 
         {/* Debug info */}
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-[hsl(var(--muted-foreground))]">
           Libri totali: {books.length} |
           Con location: {books.filter(b => b.location && b.location.trim() !== '').length} |
           Filtrati: {filteredBooks.length}
@@ -179,86 +200,94 @@ export function BookList() {
       {/* Lista libri */}
       <AnimatePresence mode="wait">
         <motion.div 
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+          className="book-list"
           layout
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          {filteredBooks.map((book) => (
+          {filteredBooks.map((book, index) => (
             <motion.div
               key={book.id}
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
+              transition={{ 
+                duration: 0.4, 
+                delay: index * 0.05, 
+                type: "spring", 
+                stiffness: 300, 
+                damping: 25 
+              }}
+              className="book-card shadow-3d"
+              whileHover={{ y: -8, scale: 1.02, transition: { duration: 0.2 } }}
             >
-              <Link href={`/books/${book.id}`}>
-                <div className="bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition-colors h-full flex flex-col">
-                  {/* Copertina e titolo */}
-                  <div className="flex gap-4">
-                    <div className="relative w-20 h-28 flex-shrink-0">
-                      {book.coverUrl ? (
-                        <Image
-                          src={book.coverUrl}
-                          alt={book.title}
-                          fill
-                          className="rounded object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-700 rounded flex items-center justify-center">
-                          <BookOpen className="w-8 h-8 text-gray-500" />
+              <Link href={`/books/${book.id}`} className="block h-full">
+                <div className="bg-[hsl(var(--card))] rounded-[var(--radius)] overflow-hidden h-full flex flex-col relative">
+                  {/* Copertina */}
+                  <div className="relative w-full pt-[150%] overflow-hidden">
+                    {book.coverUrl ? (
+                      <Image
+                        src={book.coverUrl}
+                        alt={book.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className="object-cover transition-transform duration-500"
+                        priority={index < 8}
+                        quality={80}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-[hsl(var(--muted))] flex items-center justify-center">
+                        <BookOpen className="h-16 w-16 text-[hsl(var(--muted-foreground))]" />
+                      </div>
+                    )}
+                    
+                    {/* Overlay con informazioni */}
+                    <div className="book-card-image-overlay">
+                      <div className="book-card-image-overlay-content">
+                        <h3 className="font-bold">{book.title}</h3>
+                        {book.author && <p>{book.author}</p>}
+                        
+                        {/* Badge per lo stato */}
+                        {book.status && (
+                          <span className={`status-badge mt-2 ${statusColors[book.status]}`}>
+                            {book.status}
+                          </span>
+                        )}
+                        
+                        {/* Posizione */}
+                        {book.location && (
+                          <div className="flex items-center gap-1 mt-2 text-xs">
+                            <MapPin className="h-3 w-3" />
+                            <span>{book.location}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Dettagli libro */}
+                  <div className="p-4 flex-1 flex flex-col">
+                    <h3 className="font-bold text-lg line-clamp-2 mb-1">{book.title}</h3>
+                    {book.author && (
+                      <p className="text-sm text-[hsl(var(--muted-foreground))] mb-2 line-clamp-1">{book.author}</p>
+                    )}
+                    
+                    {/* Metadati in fondo */}
+                    <div className="mt-auto pt-2 flex flex-wrap gap-2 text-xs text-[hsl(var(--muted-foreground))]">
+                      {book.publishedDate && (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>{book.publishedDate}</span>
+                        </div>
+                      )}
+                      
+                      {book.rating && (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3" />
+                          <span>{book.rating}/5</span>
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white line-clamp-2">{book.title}</h3>
-                      {book.author && (
-                        <p className="text-sm text-gray-400 mt-1 line-clamp-1">{book.author}</p>
-                      )}
-                      {/* Status badge */}
-                      <span 
-                        className={cn(
-                          "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset mt-2",
-                          statusColors[book.status]
-                        )}
-                      >
-                        {book.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Info aggiuntive */}
-                  <div className="mt-4 space-y-2 text-sm">
-                    {/* Location */}
-                    {book.location && book.location.trim() !== '' && (
-                      <div className="flex items-center gap-2 text-green-400">
-                        <MapPin className="h-3 w-3 flex-shrink-0" />
-                        <span className="line-clamp-1">{book.location}</span>
-                      </div>
-                    )}
-
-                    {/* Data inizio lettura */}
-                    {book.dateStarted && (
-                      <div className="flex items-center gap-2 text-blue-400">
-                        <Calendar className="h-3 w-3 flex-shrink-0" />
-                        <span>Iniziato: {formatDate(book.dateStarted)}</span>
-                      </div>
-                    )}
-
-                    {/* Rating */}
-                    {book.rating && (
-                      <div className="flex items-center gap-2 text-yellow-400">
-                        <Star className="h-3 w-3 flex-shrink-0" />
-                        <span>{book.rating}/5</span>
-                      </div>
-                    )}
-
-                    {/* Pagine */}
-                    {book.pageCount && (
-                      <div className="flex items-center gap-2 text-purple-400">
-                        <BookOpen className="h-3 w-3 flex-shrink-0" />
-                        <span>{book.pageCount} pagine</span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </Link>
@@ -266,18 +295,6 @@ export function BookList() {
           ))}
         </motion.div>
       </AnimatePresence>
-
-      {/* Messaggio nessun risultato */}
-      {filteredBooks.length === 0 && (
-        <motion.div 
-          className="text-center py-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          <p className="text-gray-400">Nessun libro trovato</p>
-        </motion.div>
-      )}
     </motion.div>
   );
 }

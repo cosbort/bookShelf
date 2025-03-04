@@ -34,18 +34,39 @@ async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Respo
   }
 }
 
-async function searchGoogleBooks(query: string): Promise<string | null> {
+async function searchGoogleBooks(query: string): Promise<{ coverUrl: string | null; width: number; height: number } | null> {
   if (!hasGoogleBooksApiKey()) return null;
 
   try {
     const response = await fetchWithRetry(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${env.GOOGLE_BOOKS_API_KEY}`
+      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&key=${env.googleBooksApiKey}`
     );
     const data = await response.json();
 
-    if (data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail) {
-      // Sostituisci http con https per evitare errori di mixed content
-      return data.items[0].volumeInfo.imageLinks.thumbnail.replace('http://', 'https://');
+    if (data.items?.[0]?.volumeInfo?.imageLinks) {
+      const imageLinks = data.items[0].volumeInfo.imageLinks;
+      // Preferisci l'immagine più grande disponibile
+      const coverUrl = (imageLinks.large || imageLinks.medium || imageLinks.thumbnail || '').replace('http://', 'https://');
+      
+      // Dimensioni standard delle immagini di Google Books
+      const dimensions = {
+        large: { width: 512, height: 768 },
+        medium: { width: 256, height: 384 },
+        thumbnail: { width: 128, height: 192 }
+      };
+
+      let width = 128;
+      let height = 192;
+
+      if (imageLinks.large) {
+        width = dimensions.large.width;
+        height = dimensions.large.height;
+      } else if (imageLinks.medium) {
+        width = dimensions.medium.width;
+        height = dimensions.medium.height;
+      }
+
+      return { coverUrl, width, height };
     }
   } catch (error) {
     console.error('Errore durante la ricerca su Google Books:', error);
@@ -73,9 +94,13 @@ export async function GET(request: Request) {
     if (author) query += ` inauthor:${author}`;
 
     // Cerca la copertina su Google Books
-    const coverUrl = await searchGoogleBooks(query);
+    const result = await searchGoogleBooks(query);
 
-    return NextResponse.json({ coverUrl });
+    return NextResponse.json({
+      coverUrl: result?.coverUrl || null,
+      width: result?.width || 128,
+      height: result?.height || 192
+    });
   } catch (error) {
     console.error('Errore durante il recupero della copertina:', error);
     return NextResponse.json(

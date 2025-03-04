@@ -35,7 +35,7 @@ export function ScrollToTop() {
       size="icon"
       className={cn(
         'fixed bottom-8 right-8 z-50 h-10 w-10 rounded-full transition-all duration-300',
-        'bg-emerald-600 hover:bg-emerald-700 shadow-lg',
+        'bg-emerald-600 hover:bg-emerald-700 shadow-custom',
         show ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
       )}
       onClick={handleClick}

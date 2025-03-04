@@ -10,5 +10,7 @@ export interface SearchBookResult {
   pageCount?: number;
   isbn?: string;
   coverUrl?: string;
+  coverWidth?: number;
+  coverHeight?: number;
   genre?: string;
 }

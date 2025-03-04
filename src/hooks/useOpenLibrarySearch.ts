@@ -16,6 +16,13 @@ interface OpenLibraryResponse {
   }>;
 }
 
+// Dimensioni standard delle copertine di OpenLibrary
+const COVER_SIZES = {
+  S: { width: 180, height: 270 },   // Small
+  M: { width: 360, height: 540 },   // Medium
+  L: { width: 720, height: 1080 },  // Large
+} as const;
+
 export function useOpenLibrarySearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,13 +41,24 @@ export function useOpenLibrarySearch() {
   };
 
   const transformOpenLibraryToBook = (item: OpenLibraryResponse['docs'][0]): SearchBookResult => {
+    let coverUrl = '';
+    let coverWidth = 0;
+    let coverHeight = 0;
+
+    if (item.cover_i) {
+      // Usiamo la versione Large per la migliore qualità
+      coverUrl = `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`;
+      coverWidth = COVER_SIZES.L.width;
+      coverHeight = COVER_SIZES.L.height;
+    }
+
     return {
       title: item.title,
       author: item.author_name?.[0] || 'Autore sconosciuto',
       isbn: item.isbn?.[0] || '',
-      coverUrl: item.cover_i 
-        ? `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg`
-        : '',
+      coverUrl,
+      coverWidth,
+      coverHeight,
       publishedDate: item.first_publish_year?.toString() || '',
       publisher: item.publisher?.[0] || '',
       pageCount: item.number_of_pages_median || 0,
@@ -101,12 +119,28 @@ export function useOpenLibrarySearch() {
       if (!bookData) {
         return null;
       }
+
+      let coverUrl = '';
+      let coverWidth = 0;
+      let coverHeight = 0;
+
+      if (bookData.cover?.large) {
+        coverUrl = bookData.cover.large;
+        coverWidth = COVER_SIZES.L.width;
+        coverHeight = COVER_SIZES.L.height;
+      } else if (bookData.cover?.medium) {
+        coverUrl = bookData.cover.medium;
+        coverWidth = COVER_SIZES.M.width;
+        coverHeight = COVER_SIZES.M.height;
+      }
       
       return {
         title: bookData.title,
         author: bookData.authors?.[0]?.name || 'Autore sconosciuto',
         isbn,
-        coverUrl: bookData.cover?.large || bookData.cover?.medium || '',
+        coverUrl,
+        coverWidth,
+        coverHeight,
         description: bookData.notes || '',
         publishedDate: bookData.publish_date || '',
         publisher: bookData.publishers?.[0] || '',

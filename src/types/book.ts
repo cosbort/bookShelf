@@ -13,6 +13,8 @@ export interface Book {
   genre?: string;
   status: ReadingStatus;
   coverUrl?: string;
+  coverWidth?: number;
+  coverHeight?: number;
   description?: string;
   publishedDate?: string;
   yearPublished?: number;
