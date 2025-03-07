@@ -42,104 +42,62 @@ export function BookCard({ book }: BookCardProps) {
     >
       <Card 
         onClick={handleClick}
-        className="book-card h-full flex flex-col cursor-pointer shadow-3d"
+        className="group flex flex-col h-[350px] rounded-lg overflow-hidden bg-card border border-border shadow-xs hover:shadow-md hover:border-primary/30 transition-all duration-300"
       >
-        <CardHeader className="flex-grow-0 pb-2">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <CardTitle className="text-xl font-bold line-clamp-2">{book.title}</CardTitle>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">{book.author}</p>
-            </div>
-            <Badge className={`ml-2 ${statusColors[book.status]} status-badge`}>
-              {book.status}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="flex-grow flex flex-col pt-0">
-          <div className="flex gap-4 mb-4">
+        <Link href={`/books/${book.id}`} className="flex flex-col h-full no-underline">
+          <div className="relative h-[200px] overflow-hidden bg-muted rounded-t-lg">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
             {book.coverUrl ? (
-              <div 
-                className="book-card-image relative flex-shrink-0 rounded-[var(--radius)] overflow-hidden"
-                style={{ width: coverWidth, height: coverHeight }}
-              >
-                <Image
-                  src={book.coverUrl}
-                  alt={book.title}
-                  fill
-                  className="object-cover"
-                  sizes="128px"
-                  priority={true}
-                  quality={80}
-                  blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx4eHRoaHSQtJSEkLzYvLy0vLi43QzlANz45Ny4tRUhESkQ6Tj5UVkZIVENKTUhKTj7/2wBDAR"
-                  placeholder="blur"
-                />
-                <div className="book-card-image-overlay">
-                  <div className="book-card-image-overlay-content">
-                    <h3>{book.title}</h3>
-                    <p>{book.author}</p>
-                    {book.location && (
-                      <div className="flex items-center gap-1 mt-2 text-xs">
-                        <MapPin className="h-3 w-3" />
-                        <span>{book.location}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <Image
+                src={book.coverUrl}
+                alt={book.title}
+                className="h-full w-full object-cover"
+                fill
+                sizes="128px"
+                priority={true}
+                quality={80}
+                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDABQODxIPDRQSEBIXFRQdHx4eHRoaHSQtJSEkLzYvLy0vLi43QzlANz45Ny4tRUhESkQ6Tj5UVkZIVENKTUhKTj7/2wBDAR"
+                placeholder="blur"
+              />
             ) : (
               <div 
-                className="book-card-image bg-[hsl(var(--muted))] rounded-[var(--radius)] flex items-center justify-center flex-shrink-0"
-                style={{ width: coverWidth, height: coverHeight }}
+                className="flex flex-col items-center justify-center h-full p-4 text-center bg-gradient-to-b from-primary/10 to-background"
               >
-                <BookOpen className="h-16 w-16 text-[hsl(var(--muted-foreground))]" />
+                <BookOpen className="h-10 w-10 text-primary/70 mb-2" />
+                <p className="text-xs text-foreground font-medium line-clamp-3">
+                  {book.title}
+                </p>
               </div>
             )}
-            <div className="flex-1">
-              {book.description && (
-                <p className="text-sm text-[hsl(var(--muted-foreground))] line-clamp-4">
-                  {book.description}
-                </p>
-              )}
-              <div className="mt-2 space-y-1">
-                {book.genre && (
-                  <Badge variant="outline" className="mr-2">
-                    {book.genre}
-                  </Badge>
+          </div>
+          <div className="flex flex-col flex-grow p-3">
+            <h3 className="font-medium text-sm mb-1 line-clamp-2">{book.title}</h3>
+            <p className="text-xs text-muted-foreground line-clamp-1 mb-2">
+              {book.author || 'Autore sconosciuto'}
+            </p>
+            <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                {book.rating && book.rating > 0 && (
+                  <div className="flex items-center">
+                    <Star className="h-3 w-3 fill-current text-yellow-400" />
+                    <span className="ml-1">{book.rating}</span>
+                  </div>
                 )}
-                {book.isbn && (
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                    ISBN: {book.isbn}
-                  </p>
+                {book.pages && (
+                  <div className="flex items-center">
+                    <BookOpen className="h-3 w-3" />
+                    <span className="ml-1">{book.pages} pagine</span>
+                  </div>
                 )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className={`ml-2 ${statusColors[book.status]} status-badge`}>
+                  {book.status}
+                </Badge>
               </div>
             </div>
           </div>
-          <div className="mt-auto pt-4 border-t border-[hsl(var(--border))] flex flex-wrap gap-2 text-xs text-[hsl(var(--muted-foreground))]">
-            {book.publisher && (
-              <div className="flex items-center gap-1">
-                <span>{book.publisher}</span>
-              </div>
-            )}
-            {book.publishedDate && (
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                <span>{book.publishedDate}</span>
-              </div>
-            )}
-            {book.pageCount && (
-              <div className="flex items-center gap-1">
-                <BookOpen className="h-3 w-3" />
-                <span>{book.pageCount} pagine</span>
-              </div>
-            )}
-            {book.rating && (
-              <div className="flex items-center gap-1">
-                <Star className="h-3 w-3" />
-                <span>{book.rating}/5</span>
-              </div>
-            )}
-          </div>
-        </CardContent>
+        </Link>
       </Card>
     </motion.div>
   );

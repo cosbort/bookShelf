@@ -21,6 +21,11 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/books/route.js"
     ],
+    "/api/books/cover/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/books/cover/route.js"
+    ],
     "/books/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -30,11 +35,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/books/[id]/route.js"
-    ],
-    "/books/[id]/edit/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/books/[id]/edit/page.js"
     ]
   }
 }

@@ -103,7 +103,8 @@ Prefissi per i commit:
 - "chore:" per task di manutenzione
 
 ## Modifiche Recenti
-- **Marzo 2025**: Aggiornamento a Tailwind CSS v4 e correzione delle classi di spaziatura
+- **Marzo 2025**: Miglioramento della visualizzazione delle copertine dei libri con altezza aumentata per evitare il taglio delle immagini
+- **Marzo 2025**: Aggiornamento a Tailwind CSS v4 con configurazione tramite @tailwindcss/postcss
 - **Marzo 2025**: Aggiornamento delle dipendenze (React 19.0.0, Next.js 15.2.0, TypeScript 5.7.2)
 - **Marzo 2025**: Migrazione a pnpm come gestore di pacchetti
 

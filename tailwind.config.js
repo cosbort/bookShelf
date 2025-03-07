@@ -1,7 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
-  content: ["./src/**/*.{ts,tsx}"],
+  content: [
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
+  ],
   theme: {
     container: {
       center: true,
@@ -10,12 +15,29 @@ module.exports = {
         "2xl": "1400px",
       },
     },
-    borderRadius: {
-      lg: 'var(--radius)',
-      md: 'calc(var(--radius) - 2px)',
-      sm: 'calc(var(--radius) - 4px)',
-    },
     extend: {
+      borderRadius: {
+        DEFAULT: 'var(--radius)',
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 0.125rem)',
+        sm: 'calc(var(--radius) - 0.25rem)',
+      },
+      transitionTimingFunction: {
+        'bezier': 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
+      gridTemplateColumns: {
+        'auto-fill-200': 'repeat(auto-fill, minmax(200px, 1fr))',
+        'auto-fill-250': 'repeat(auto-fill, minmax(250px, 1fr))',
+      },
+      aspectRatio: {
+        'book': '2/3',
+      },
+      height: {
+        'book-card': '350px',
+      },
+      minHeight: {
+        'book-cover': '200px',
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -51,9 +73,6 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
-      transitionTimingFunction: {
-        DEFAULT: "cubic-bezier(0.4, 0, 0.2, 1)",
-      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -70,5 +89,7 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate").default],
+  plugins: [
+    require("tailwindcss-animate"),
+  ],
 }
