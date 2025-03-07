@@ -171,7 +171,7 @@ export function BookForm({ onSubmit, initialBook }: BookFormProps) {
     return () => {
       isCurrentSearch = false;
     };
-  }, [debouncedSearchTerm, isDropdownOpen, searchDisabled, apiInUse]);
+  }, [debouncedSearchTerm, isDropdownOpen, searchDisabled, apiInUse, googleSearchByTitle, googleSearchByIsbn, openLibrarySearchByTitle, openLibrarySearchByIsbn]);
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

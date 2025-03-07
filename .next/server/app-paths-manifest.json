@@ -1,7 +1,6 @@
 {
   "/api/books/route": "app/api/books/route.js",
   "/api/books/cover/route": "app/api/books/cover/route.js",
-  "/api/books/[id]/route": "app/api/books/[id]/route.js",
-  "/books/page": "app/books/page.js",
-  "/books/[id]/page": "app/books/[id]/page.js"
+  "/page": "app/page.js",
+  "/books/page": "app/books/page.js"
 }

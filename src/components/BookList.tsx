@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Book as BookIcon, Star, Filter, Eye, Info, ChevronDown, Bookmark, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -231,17 +232,21 @@ function BookCard({ book }: { book: Book }) {
           
           {/* Cover Image */}
           {coverImageUrl ? (
-            <img
+            <Image
               src={coverImageUrl}
               alt={`Copertina di ${book.title}`}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
-              onError={(e) => {
+              width={500}
+              height={800}
+              unoptimized={coverImageUrl.startsWith('/api/')}
+              onError={() => {
                 // Fallback in caso di errore di caricamento dell'immagine
-                const target = e.target as HTMLImageElement;
-                target.onerror = null;
-                target.src = 'https://placehold.co/400x600/f0f0f0/333333?text=Nessuna+Copertina';
+                const imgElement = document.getElementById(`cover-${book.id}`) as HTMLImageElement;
+                if (imgElement) {
+                  imgElement.src = 'https://placehold.co/400x600/f0f0f0/333333?text=Nessuna+Copertina';
+                }
               }}
+              id={`cover-${book.id}`}
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-4 text-center bg-gradient-to-b from-[hsl(var(--primary))]/10 to-[hsl(var(--background))]">

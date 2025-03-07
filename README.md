@@ -57,12 +57,12 @@ git clone [repository-url]
 
 2. Installa le dipendenze
 ```bash
-npm install
+pnpm install
 ```
 
 3. Avvia il server di sviluppo
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## Convenzioni di Sviluppo
