@@ -27,6 +27,11 @@ dist/
 .next/cache/
 **/.next/cache/
 
+# Data files
+*.csv
+*.xlsx
+*.xls
+
 # Uploaded files
 static/covers/*
 !static/covers/.gitkeep

@@ -1,6 +1,0 @@
-{
-  "/api/books/route": "app/api/books/route.js",
-  "/api/books/cover/route": "app/api/books/cover/route.js",
-  "/page": "app/page.js",
-  "/books/page": "app/books/page.js"
-}
