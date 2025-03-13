@@ -9,6 +9,7 @@ import { AlertCircle, Book as BookIcon, Calendar, Hash, Info, MapPin, Star, Type
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate } from '@/utils/dateFormat';
+import { getBadgeColors } from '@/utils/badgeColors';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 
@@ -72,14 +73,6 @@ export default function BookDetailPage() {
       </div>
     );
   }
-
-  const statusColors = {
-    'To Read': 'bg-yellow-200 text-yellow-800',
-    'Reading': 'bg-blue-200 text-blue-800',
-    'Read': 'bg-green-200 text-green-800',
-    'Completed': 'bg-purple-200 text-purple-800',
-    'Dropped': 'bg-red-200 text-red-800',
-  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -156,7 +149,15 @@ export default function BookDetailPage() {
                 <Info className="h-5 w-5 mt-0.5 text-muted-foreground" />
                 <div>
                   <h3 className="font-semibold">Stato</h3>
-                  <Badge className={statusColors[book.status] || 'bg-gray-200'}>
+                  <Badge 
+                    className="text-xs font-bold shadow-sm backdrop-blur-sm transition-all duration-200 px-3 py-1"
+                    style={{
+                      backgroundColor: getBadgeColors(book.status).bg,
+                      color: getBadgeColors(book.status).text,
+                      borderColor: getBadgeColors(book.status).border,
+                      borderWidth: '1.5px'
+                    }}
+                  >
                     {book.status}
                   </Badge>
                   {book.currentPage && book.pageCount && (

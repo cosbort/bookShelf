@@ -1,39 +1,57 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Book as BookIcon, Star, Filter, Eye, Info, ChevronDown, Bookmark, RotateCw } from 'lucide-react';
+import { Book as BookIcon, Star, Filter, Eye, Info, ChevronDown, Bookmark, RotateCw, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBooks } from '@/hooks/useBooks';
 import { useBookStatus } from '@/hooks/useBookStatus';
 import { formatDate } from '@/utils/dateFormat';
+import { getBadgeColors } from '@/utils/badgeColors';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { Book } from '@/types/book';
 
-type Book = {
-  id: string;
-  title: string;
-  author: string;
-  isbn: string | undefined;
-  location: string | undefined;
-  status: string;
-  coverUrl?: string;
-  rating?: number;
-  pages?: number;
-  year?: number;
-  createdAt: string;
-  updatedAt: string;
+// Definizione dei tipi di ordinamento disponibili
+type SortOption = {
+  value: string;
+  label: string;
+  sortFn: (a: Book, b: Book) => number;
 };
 
 type Props = {
   searchQuery?: string;
 };
+
+// Funzione di utilità per ottenere la prima lettera di una stringa
+function getFirstLetter(str: string): string {
+  return str.charAt(0).toUpperCase();
+}
+
+// Funzione per raggruppare i libri per lettera del titolo o dell'autore
+function groupBooksByLetter(books: Book[], sortBy: string): Map<string, Book[]> {
+  const groups = new Map<string, Book[]>();
+  
+  books.forEach(book => {
+    // Determina il campo da usare per il raggruppamento
+    const field = sortBy.startsWith('author') ? book.author : book.title;
+    const letter = field.charAt(0).toUpperCase();
+    
+    if (!groups.has(letter)) {
+      groups.set(letter, []);
+    }
+    groups.get(letter)?.push(book);
+  });
+  
+  return new Map([...groups.entries()].sort());
+}
 
 export function BookList({ searchQuery = '' }: Props) {
   const { books, isLoading, error, refetch } = useBooks();
@@ -41,11 +59,79 @@ export function BookList({ searchQuery = '' }: Props) {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('titleAsc');
+  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
+  const letterRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Opzioni di ordinamento disponibili
+  const sortOptions: SortOption[] = [
+    { 
+      value: 'titleAsc', 
+      label: 'Titolo (A-Z)', 
+      sortFn: (a, b) => a.title.localeCompare(b.title) 
+    },
+    { 
+      value: 'titleDesc', 
+      label: 'Titolo (Z-A)', 
+      sortFn: (a, b) => b.title.localeCompare(a.title) 
+    },
+    { 
+      value: 'authorAsc', 
+      label: 'Autore (A-Z)', 
+      sortFn: (a, b) => a.author.localeCompare(b.author) 
+    },
+    { 
+      value: 'authorDesc', 
+      label: 'Autore (Z-A)', 
+      sortFn: (a, b) => b.author.localeCompare(a.author) 
+    },
+    { 
+      value: 'ratingDesc', 
+      label: 'Valutazione (alta-bassa)', 
+      sortFn: (a, b) => (b.rating || 0) - (a.rating || 0) 
+    },
+    { 
+      value: 'yearDesc', 
+      label: 'Anno (recente-vecchio)', 
+      sortFn: (a, b) => (b.yearPublished || 0) - (a.yearPublished || 0) 
+    },
+    { 
+      value: 'yearAsc', 
+      label: 'Anno (vecchio-recente)', 
+      sortFn: (a, b) => (a.yearPublished || 0) - (b.yearPublished || 0) 
+    },
+    { 
+      value: 'recentlyAdded', 
+      label: 'Aggiunti di recente', 
+      sortFn: (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() 
+    }
+  ];
 
   // Estrai gli status unici dai libri
   const uniqueStatuses = [...new Set(books?.map(book => book.status) || [])];
   
-  // Filtro dei libri in base alla query di ricerca e ai filtri attivi
+  // Raggruppa i libri per lettera
+  const groupedBooks = useMemo(() => {
+    return groupBooksByLetter(filteredBooks, sortBy);
+  }, [filteredBooks, sortBy]);
+
+  // Lista di tutte le lettere disponibili
+  const availableLetters = useMemo(() => {
+    return Array.from(groupedBooks.keys());
+  }, [groupedBooks]);
+
+  // Funzione per scorrere alla lettera selezionata
+  const scrollToLetter = (letter: string) => {
+    const element = letterRefs.current.get(letter);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setSelectedLetter(letter);
+      // Reset della lettera selezionata dopo un breve delay
+      setTimeout(() => setSelectedLetter(null), 1000);
+    }
+  };
+  
+  // Filtro e ordinamento dei libri
   useEffect(() => {
     if (!books) return;
     
@@ -67,8 +153,14 @@ export function BookList({ searchQuery = '' }: Props) {
       filtered = filtered.filter(book => activeFilters.includes(book.status));
     }
     
+    // Ordina i libri in base all'opzione selezionata
+    const selectedSortOption = sortOptions.find(option => option.value === sortBy);
+    if (selectedSortOption) {
+      filtered.sort(selectedSortOption.sortFn);
+    }
+    
     setFilteredBooks(filtered);
-  }, [books, searchQuery, activeFilters]);
+  }, [books, searchQuery, activeFilters, sortBy]);
 
   if (error) {
     return (
@@ -115,20 +207,39 @@ export function BookList({ searchQuery = '' }: Props) {
           )}
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex items-center gap-2"
-            onClick={() => refetch()}
-          >
-            <RotateCw className="h-3 w-3" />
-            Aggiorna
-          </Button>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Selettore di ordinamento */}
+          <div className="flex items-center gap-2 min-w-[200px]">
+            <ArrowUpDown className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Ordina per" />
+              </SelectTrigger>
+              <SelectContent className="bg-[hsl(var(--background))] border border-[hsl(var(--border))]">
+                {sortOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-xs">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            {filteredBooks.length} libri totali
-          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-2"
+              onClick={() => refetch()}
+            >
+              <RotateCw className="h-3 w-3" />
+              Aggiorna
+            </Button>
+            
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              {filteredBooks.length} libri totali
+            </p>
+          </div>
         </div>
       </div>
       
@@ -172,7 +283,7 @@ export function BookList({ searchQuery = '' }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Lista dei libri */}
+      {/* Lista dei libri con indice alfabetico */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {Array.from({ length: 12 }).map((_, i) => (
@@ -191,10 +302,57 @@ export function BookList({ searchQuery = '' }: Props) {
           ))}
         </div>
       ) : filteredBooks.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {filteredBooks.map((book) => (
-            <BookCard key={book.id} book={book} />
-          ))}
+        <div className="relative flex">
+          {/* Lista dei libri raggruppati per lettera */}
+          <div className="flex-1 pr-8">
+            {Array.from(groupedBooks.entries()).map(([letter, books]) => (
+              <div 
+                key={letter}
+                ref={(el) => {
+                  if (el) letterRefs.current.set(letter, el);
+                }}
+                className="mb-8"
+              >
+                <div className="sticky top-0 z-10 py-2 mb-4">
+                  <div className="bg-[hsl(var(--card))]/80 backdrop-blur-sm border-b border-[hsl(var(--border))] px-4 py-2 rounded-t-[var(--radius)]">
+                    <h2 className="text-2xl font-semibold text-[hsl(var(--foreground))]">
+                      {letter}
+                    </h2>
+                    {sortBy.startsWith('author') && (
+                      <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                        {books.length} {books.length === 1 ? 'autore' : 'autori'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                  {books.map((book) => (
+                    <BookCard key={book.id} book={book} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Indice alfabetico laterale */}
+          {availableLetters.length > 0 && (
+            <div className="hidden lg:flex flex-col fixed right-4 top-1/2 -translate-y-1/2 bg-[hsl(var(--background))]/80 backdrop-blur-sm rounded-full py-2 border border-[hsl(var(--border))]">
+              {availableLetters.map((letter) => (
+                <button
+                  key={letter}
+                  onClick={() => scrollToLetter(letter)}
+                  className={cn(
+                    "w-8 h-8 flex items-center justify-center text-xs font-medium rounded-full transition-colors",
+                    selectedLetter === letter
+                      ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                      : "hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                  )}
+                >
+                  {letter}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center p-8 text-center bg-[hsl(var(--card))] rounded-[var(--radius)] border border-[hsl(var(--border))]">
@@ -260,11 +418,12 @@ function BookCard({ book }: { book: Book }) {
           {/* Status Badge */}
           <div className="absolute top-2 right-2 z-20">
             <Badge 
-              className="text-xs font-medium shadow-sm backdrop-blur-sm"
+              className="text-xs font-bold shadow-sm backdrop-blur-sm transition-all duration-200 px-3 py-1"
               style={{
-                backgroundColor: `${getStatusColor(book.status)}30`,
-                color: getStatusColor(book.status),
-                borderColor: getStatusColor(book.status)
+                backgroundColor: getBadgeColors(book.status).bg,
+                color: getBadgeColors(book.status).text,
+                borderColor: getBadgeColors(book.status).border,
+                borderWidth: '1.5px'
               }}
             >
               {book.status}
@@ -286,15 +445,15 @@ function BookCard({ book }: { book: Book }) {
                   <span>{book.rating}</span>
                 </div>
               )}
-              {book.pages && book.pages > 0 && (
+              {book.pageCount && book.pageCount > 0 && (
                 <div className="flex items-center">
                   <BookIcon className="h-3 w-3 mr-1" />
-                  <span>{book.pages} pp</span>
+                  <span>{book.pageCount} pp</span>
                 </div>
               )}
             </div>
-            {book.year && (
-              <span>{book.year}</span>
+            {book.yearPublished && (
+              <span>{book.yearPublished}</span>
             )}
           </div>
         </div>
