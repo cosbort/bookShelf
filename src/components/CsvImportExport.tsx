@@ -14,7 +14,7 @@ export function CsvImportExport({ onComplete }: CsvImportExportProps) {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | ExportProgress | null>(null);
-  const { mutate } = useBooks();
+  const { refetch } = useBooks();
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -26,7 +26,7 @@ export function CsvImportExport({ onComplete }: CsvImportExportProps) {
         setProgress(progress);
       });
 
-      await mutate();
+      await refetch();
       
       toast.success(
         `Importazione completata: ${result.success} libri importati, ${result.errors} errori`
