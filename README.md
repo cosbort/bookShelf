@@ -18,7 +18,7 @@ Un'applicazione web moderna per catalogare e gestire la tua collezione di libri 
 - Tailwind CSS
 - Shadcn UI
 - Radix UI
-- Express.js
+- Prisma ORM
 
 ## Struttura del Progetto
 ```
