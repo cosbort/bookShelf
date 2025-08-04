@@ -120,7 +120,7 @@ async function fetchWithTimeout(
 }
 
 /**
- * Crea un delay promessa che si risolve dopo il tempo specificato
+ * Crea una promessa che si risolve dopo il tempo specificato
  * @param ms - Millisecondi da attendere
  * @returns Promise che si risolve dopo il delay
  */
