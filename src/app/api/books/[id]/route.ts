@@ -49,7 +49,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
         description: data.description,
         publishedDate: data.publishedDate,
         publisher: data.publisher,
-        pageCount: data.pageCount,
+        pageCount: typeof data.pageCount === 'string'
+          ? parseInt(data.pageCount)
+          : data.pageCount ?? null,
       },
     });
     return NextResponse.json(book);
